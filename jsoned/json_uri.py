@@ -44,6 +44,9 @@ class JsonUri:
             self._host = ""
             self._query = ""
 
+        if self._scheme:
+            self._path = normalise_path(self._path)
+
     def __repr__(self):
         return f"JsonUri({self})"
 
@@ -116,7 +119,7 @@ class JsonUri:
 
         return result
 
-    def __add__(self, other: Union[str, "JsonUri"]) -> "JsonUri":
+    def resolve(self, other: Union[str, "JsonUri"]) -> "JsonUri":
         result = copy(self)
 
         if not isinstance(other, JsonUri):

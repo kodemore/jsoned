@@ -23,40 +23,40 @@ class JsonNumber(JsonType):
 
     def __eq__(self, other):
         if isinstance(other, JsonType):
-            return self.value == other.value
+            return self._value == other._value
         elif isinstance(other, float):
-            return self.value == Decimal(f"{other}")
+            return self._value == Decimal(f"{other}")
         else:
-            return self.value == other
+            return self._value == other
 
     def __lt__(self, other):
         if isinstance(other, JsonType):
-            return self.value < other.value
+            return self._value < other._value
         elif isinstance(other, float):
-            return self.value < Decimal(f"{other}")
+            return self._value < Decimal(f"{other}")
         else:
-            return self.value < other
+            return self._value < other
 
     def __le__(self, other):
         if isinstance(other, JsonType):
-            return self.value <= other.value
+            return self._value <= other._value
         elif isinstance(other, float):
-            return self.value <= Decimal(f"{other}")
+            return self._value <= Decimal(f"{other}")
         else:
-            return self.value <= other
+            return self._value <= other
 
     def __gt__(self, other):
         if isinstance(other, JsonType):
-            return self.value > other.value
+            return self._value > other._value
         elif isinstance(other, float):
-            return self.value > Decimal(f"{other}")
+            return self._value > Decimal(f"{other}")
         else:
-            return self.value > other
+            return self._value > other
 
     def __ge__(self, other):
         if isinstance(other, JsonType):
-            return self.value >= other.value
+            return self._value >= other._value
         elif isinstance(other, float):
-            return self.value >= Decimal(f"{other}")
+            return self._value >= Decimal(f"{other}")
         else:
-            return self.value >= other
+            return self._value >= other

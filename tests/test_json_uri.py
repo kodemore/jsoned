@@ -1,6 +1,6 @@
 import pytest
 
-from jsoned import JsonUri
+from jsoned import JsonUri, Uri
 
 
 def test_can_instantiate() -> None:
@@ -148,7 +148,7 @@ def test_is_relative(uri_str: str, expected: bool) -> None:
         ],
         [
             "file://path/to/file.json#fragment/part",
-            "/path/to/file.json#fragment/part2",
+            "//path/to/file.json#fragment/part2",
             "file://path/to/file.json#fragment/part2",
         ],
         [
@@ -164,31 +164,38 @@ def test_is_relative(uri_str: str, expected: bool) -> None:
         [
             "file://path/to/file.json#fragment/part",
             "/to/file.json",
-            "file://to/file.json",
+            "file://path/to/file.json",
         ],
-        ["path/to/file.json#fragment/part", "to/file.json", "path/to/to/file.json"],
     ],
 )
 def test_can_add_two_uris(base: str, other: str, expected: str) -> None:
     # given
-    base_uri = JsonUri(base)
-    other_uri = JsonUri(other)
+    base_uri = Uri(base)
+    other_uri = Uri(other)
 
     # when
-    result = base_uri + other_uri
-    result_str = base_uri + other
+    result = base_uri.resolve(other_uri)
 
     # then
-    assert isinstance(result, JsonUri)
-    assert isinstance(result_str, JsonUri)
+    assert isinstance(result, Uri)
     assert str(result) == expected
-    assert str(result_str) == expected
 
 
 def test_can_contain_only_fragment() -> None:
     # given
-    uri = JsonUri("#/only/fragment")
+    uri = Uri("#/only/fragment")
 
     # then
     assert not uri.base_uri
     assert uri.fragment == "/only/fragment"
+
+
+def test_can_normalise_uri() -> None:
+    # given
+    uri_str = "https://domain.com/../some/../path/index.htm"
+
+    # when
+    uri = Uri(uri_str)
+
+    # then
+    assert str(uri) == "https://domain.com/path/index.htm"

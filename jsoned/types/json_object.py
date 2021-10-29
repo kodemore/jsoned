@@ -10,21 +10,21 @@ class JsonObject(JsonType):
     type = "object"
 
     def __len__(self) -> int:
-        return len(self.value)
+        return len(self._value)
 
     def __getitem__(self, key: str) -> JsonType:
-        if key in self.value:
-            return self.value[key]
+        if key in self._value:
+            return self._value[key]
         raise KeyError(key)
 
     def keys(self) -> Set[str]:
-        return set(self.value.keys())
+        return set(self._value.keys())
 
     def values(self) -> List[JsonType]:
-        return list(self.value.values())
+        return list(self._value.values())
 
     def items(self):
-        return self.value.items()
+        return self._value.items()
 
     def __setitem__(self, key: str, value: JsonType) -> None:
         if not isinstance(value, JsonType):
@@ -35,7 +35,7 @@ class JsonObject(JsonType):
         if not isinstance(key, str):
             raise KeyError(key)
 
-        self.value[key] = value
+        self._value[key] = value
 
     def __iter__(self):
-        return iter(self.value)
+        return iter(self._value)

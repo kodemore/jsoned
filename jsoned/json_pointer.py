@@ -45,7 +45,7 @@ class JsonPointer(Sequence[str]):
     @classmethod
     def from_list(cls, pointer: List[str]) -> "JsonPointer":
         instance = JsonPointer.__new__(JsonPointer)
-        instance._path = [self.escape(value) for value in pointer]
+        instance._path = [cls.escape(value) for value in pointer]
 
         return instance
 

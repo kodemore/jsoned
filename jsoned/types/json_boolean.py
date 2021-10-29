@@ -18,8 +18,8 @@ class JsonBoolean(JsonType):
 
     def __eq__(self, other) -> bool:
         if isinstance(other, JsonBoolean):
-            return self.value == other.value
+            return self._value == other._value
         if isinstance(other, bool):
-            return self.value == other
+            return self._value == other
 
         raise TypeError(f"Expected bool or JsonBoolean, got `{type(other)}` instead.")

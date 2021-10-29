@@ -8,7 +8,6 @@ from jsoned.types import (
     JsonArray,
     JsonObject,
     JsonString,
-    JsonReference,
 )
 
 
@@ -113,13 +112,13 @@ def test_can_query_document_with_string_expression(json_data) -> None:
     result = doc.query("/schema/items")
 
     # then
-    assert result.value == [{"type": "integer"}, {"type": "string"}]
+    assert result._value == [{"type": "integer"}, {"type": "string"}]
 
     # when
     result = doc.query("/schema/items/0")
 
     # then
-    assert result.value == {"type": "integer"}
+    assert result._value == {"type": "integer"}
 
     # when
     result = doc.query("/schema/items/0/type")
@@ -137,13 +136,13 @@ def test_can_query_document_with_json_pointer(json_data) -> None:
     result = doc.query(JsonPointer("/schema/items"))
 
     # then
-    assert result.value == [{"type": "integer"}, {"type": "string"}]
+    assert result._value == [{"type": "integer"}, {"type": "string"}]
 
     # when
     result = doc.query(JsonPointer("/schema/items/0"))
 
     # then
-    assert result.value == {"type": "integer"}
+    assert result._value == {"type": "integer"}
 
     # when
     result = doc.query(JsonPointer("/schema/items/0/type"))

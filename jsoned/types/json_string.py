@@ -12,10 +12,10 @@ class JsonString(JsonType):
         if isinstance(char, UserString):
             char = char.data
 
-        return char in self.value
+        return char in self._value
 
     def __len__(self) -> int:
-        return len(self.value)
+        return len(self._value)
 
     def __getitem__(self, index):
-        return self.value[index]
+        return self._value[index]

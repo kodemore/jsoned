@@ -10,16 +10,16 @@ class JsonArray(JsonType):
     type = "array"
 
     def __len__(self) -> int:
-        return len(self.value)
+        return len(self._value)
 
     def __getitem__(self, i):
         if isinstance(i, slice):
-            return self.__class__(self.value[i])
+            return self.__class__(self._value[i])
         else:
-            return self.value[i]
+            return self._value[i]
 
     def __setitem__(self, i, item):
-        self.value[i] = item
+        self._value[i] = item
 
     def __delitem__(self, i):
-        del self.value[i]
+        del self._value[i]

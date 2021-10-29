@@ -1,6 +1,6 @@
 from functools import cached_property
 
-from jsoned.json_core import JsonDocument
+from jsoned.json_core import JsonDocument, JsonLoader
 from jsoned.json_pointer import JsonPointer
 from jsoned.json_uri import JsonUri
 from jsoned.types.json_object import JsonObject
@@ -12,7 +12,7 @@ __all__ = ["JsonReference", "RefKeyword"]
 class JsonReference(JsonType):
     type = "reference"
 
-    def __init__(self, node: JsonObject, document: JsonDocument, pointer: JsonPointer):
+    def __init__(self, ref: JsonUri, value: JsonType):
         self.document = document
         self.parent = node.parent
         self.node = node
@@ -37,6 +37,9 @@ class JsonReference(JsonType):
 class RefKeyword:
     key: str = "$ref"
 
+    def __init__(self, loader: JsonLoader):
+        self.loader = loader
+
     @staticmethod
     def resolve(document: JsonDocument, node: JsonObject) -> JsonType:
         uri = JsonUri(str(node["$ref"]))
@@ -45,6 +48,6 @@ class RefKeyword:
         if not uri.base_uri:  # reference to self document
             return JsonReference(node, document, pointer)
 
-        referenced_document = document.store.load(uri, document.meta)
+        referenced_document = document.store.load(uri, document)
 
         return JsonReference(node, referenced_document, pointer)
