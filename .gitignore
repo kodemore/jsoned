@@ -1,3 +1,4 @@
 .idea/
 dist/
 .hypothesis
+.DS_Store

@@ -11,7 +11,7 @@ class JsonPointer(Sequence[str]):
         if not self.POINTER_REGEX.fullmatch(pointer):
             raise ValueError(f"Expected valid json pointer, `{pointer}` given instead.")
 
-        self._path = [self.unescape(value) for value in pointer.split("/")[1:]]
+        self._nodes = [self.unescape(value) for value in pointer.split("/")[1:]]
 
     @overload
     def __getitem__(self, index: int) -> str:
@@ -23,29 +23,29 @@ class JsonPointer(Sequence[str]):
 
     def __getitem__(self, index):
         if isinstance(index, int):
-            return self._path[index]
+            return self._nodes[index]
         if isinstance(index, slice):
             instance = JsonPointer.__new__(JsonPointer)
-            instance._path = self._path[index]
+            instance._nodes = self._nodes[index]
             return instance
 
         raise TypeError(f"Expected `int` or `slice`, got `{type(index)}`.")
 
     def __len__(self) -> int:
-        return len(self._path)
+        return len(self._nodes)
 
     def __str__(self) -> str:
-        if not self._path:
+        if not self._nodes:
             return ""
-        return "".join(["/" + self.escape(item) for item in self._path])
+        return "".join(["/" + self.escape(item) for item in self._nodes])
 
     def __iter__(self):
-        return iter(self._path)
+        return iter(self._nodes)
 
     @classmethod
     def from_list(cls, pointer: List[str]) -> "JsonPointer":
         instance = JsonPointer.__new__(JsonPointer)
-        instance._path = [cls.escape(value) for value in pointer]
+        instance._nodes = [cls.escape(value) for value in pointer]
 
         return instance
 

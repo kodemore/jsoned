@@ -1,0 +1,8 @@
+{
+  "object": {
+    "description": "schema referenced by relative path",
+    "referenced": {
+      "$ref": "./schema_plain.json#/0/schema"
+    }
+  }
+}

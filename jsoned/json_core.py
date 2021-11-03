@@ -7,7 +7,6 @@ from typing import List, Type
 from typing import Sequence, Dict, overload
 
 from .json_pointer import JsonPointer
-from .json_uri import JsonUri
 from .types.json_array import JsonArray
 from .types.json_boolean import JsonBoolean
 from .types.json_null import JsonNull
@@ -15,6 +14,7 @@ from .types.json_number import JsonNumber
 from .types.json_object import JsonObject
 from .types.json_string import JsonString
 from .types.json_type import JsonType
+from .uri import Uri
 from .utils import AnyJsonType
 
 __all__ = ["JsonDocument", "Keyword", "JsonLoader"]
@@ -29,26 +29,21 @@ class Keyword(ABC):
         ...
 
 
-KeywordType = Type[Keyword]
-
-
 class JsonLoader(ABC):
     @abstractmethod
-    def load(self, uri: JsonUri) -> JsonDocument:
+    def load(self, uri: Uri) -> JsonDocument:
         ...
 
 
 class JsonDocument:
-    def __init__(
-        self,
-        value: AnyJsonType,
-        keywords: List[KeywordType] = None
-    ):
+    def __init__(self, value: AnyJsonType, keywords: List[Keyword] = None):
         self._json = value
         self._value = None
         self._ready = False
         self._keywords = keywords if keywords is not None else []
-        self.meta = {}
+        self.anchors: Dict[str, JsonType] = {}
+        self.src = None
+        self.uri = None
 
     @property
     def value(self) -> JsonType:
@@ -79,8 +74,11 @@ class JsonDocument:
             raise ValueError(
                 f"Query must be either `str` or `JsonPointer`, `{type(query)}` given instead."
             )
-
         node = self.value
+
+        if len(pointer) == 1 and pointer[0] in self.anchors:
+            return self.anchors[pointer[0]]
+
         visited = []
         for key in pointer:
             if isinstance(node, JsonArray):
@@ -114,6 +112,8 @@ class JsonDocument:
                 key: self._process_node(value, node) for key, value in value.items()
             }
             for keyword in self._keywords:
+                if keyword.key not in value:
+                    continue
                 node = keyword.resolve(self, node)
             return node
 
