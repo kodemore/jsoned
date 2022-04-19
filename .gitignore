@@ -2,3 +2,4 @@
 dist/
 .hypothesis
 .DS_Store
+__pycache__/

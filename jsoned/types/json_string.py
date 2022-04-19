@@ -5,17 +5,15 @@ from .json_type import JsonType
 __all__ = ["JsonString"]
 
 
-class JsonString(JsonType):
-    type = "string"
+class JsonString(JsonType, UserString):
+    type = JsonType.STRING
 
-    def __contains__(self, char):
-        if isinstance(char, UserString):
-            char = char.data
+    def __init__(self, value: str, parent: JsonType = None, key: str = ""):
+        if not isinstance(value, str):
+            raise TypeError(f"Expected str, got `{type(value)}` instead.")
 
-        return char in self._value
+        super().__init__(value, parent, key)
 
-    def __len__(self) -> int:
-        return len(self._value)
-
-    def __getitem__(self, index):
-        return self._value[index]
+    @property
+    def data(self) -> str:
+        return self._value

@@ -11,4 +11,7 @@ def test_can_instantiate(pointer_str: str) -> None:
     pointer = JsonPointer(pointer_str)
 
     # then
-    assert str(pointer) == pointer_str
+    if pointer_str == "":
+        assert str(pointer) == "/"
+    else:
+        assert str(pointer) == pointer_str

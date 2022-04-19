@@ -116,7 +116,7 @@ def test_is_absolute(uri_str: str, expected: bool) -> None:
         [
             "http://test.com/path/to/file.json",
             "../some/file.json",
-            "http://test.com/path/some/file.json"
+            "http://test.com/path/some/file.json",
         ],
         [
             "http://test.com/to/file.json#fragment/part",

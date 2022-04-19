@@ -1,89 +1,98 @@
 from __future__ import annotations
 
-from functools import partial
-from json import load as _load_json
-from os import path
 from typing import overload, Dict, List
 
-from yaml import FullLoader as YamlFullLoader, load as load_yaml
-
-from .json_core import JsonDocument, JsonLoader, Keyword
-from .keywords import RefKeyword, AnchorKeyword
+from .errors import JsonLoadError
+from .json_core import JsonSchema, Keyword
 from .uri import Uri
-from .uri_resolver import UriResolver
-from .utils import AnyJsonType
-
-_load_yaml = partial(load_yaml, Loader=YamlFullLoader)
+from .uri_loader import DefaultLoader, UriLoader
 
 __all__ = ["JsonStore"]
 
 
-_SUPPORTED_FORMATS = {
-    ".yaml": _load_yaml,
-    ".yml": _load_yaml,
-    ".json": _load_json,
-}
-
-
-class JsonStore(JsonLoader):
+class JsonStore:
     _instance: JsonStore = None
 
-    def __init__(self, keywords: List[Keyword] = None):
-        self._cache: Dict[str, JsonDocument] = {}
-        self.resolver = UriResolver()
-        self.keywords = keywords if keywords is not None else []
+    def __init__(self):
+        self._storage: Dict[str, JsonSchema] = {}
+        self.loader: UriLoader = DefaultLoader()
 
-    def add(self, uri: Uri, document: JsonDocument) -> None:
-        self._cache[str(uri.base_uri)] = document
+    def add(self, uri: Uri, document: JsonSchema) -> None:
+        if not uri.is_absolute:
+            raise ValueError(f"JsonStore.add `uri` parameter must be an absolute uri, `{uri}` given instead.")
+        self._storage[str(uri.base_uri)] = document
 
     @overload
-    def load(self, uri: Uri) -> JsonDocument:
+    def get(self, uri: str) -> JsonSchema:
         ...
 
     @overload
-    def load(self, file: str) -> JsonDocument:
+    def get(self, uri: Uri) -> JsonSchema:
         ...
 
-    def load(self, obj) -> JsonDocument:
+    def get(self, uri) -> JsonSchema:
+        if isinstance(uri, str):
+            return self._storage[uri]
+        if isinstance(uri, Uri):
+            return self._storage[str(uri.base_uri)]
+
+        raise TypeError(f"JsonStore.get expects uri to be `str` or `Uri`, `{type(uri)}` given instead.")
+
+    @overload
+    def __contains__(self, key: Uri) -> bool:
+        ...
+
+    @overload
+    def __contains__(self, key: str) -> bool:
+        ...
+
+    def __contains__(self, key) -> bool:
+        if isinstance(key, str):
+            return key in self._storage
+        if isinstance(key, Uri):
+            return str(key.base_uri) in self._storage
+
+        raise TypeError(
+            f"JsonStore.__contains__ expects `key` argument to be one of: `JsonUri`, `str`, `{type(key)}` given."
+        )
+
+    @overload
+    def load(self, uri: Uri, vocabulary: List[Keyword] = None) -> JsonSchema:
+        ...
+
+    @overload
+    def load(self, file: str, vocabulary: List[Keyword] = None) -> JsonSchema:
+        ...
+
+    def load(self, obj, vocabulary: List[Keyword] = None) -> JsonSchema:
+        if vocabulary is None:
+            vocabulary = []
+
         if isinstance(obj, Uri):
-            return self.load_uri(obj)
+            return self.load_uri(obj, vocabulary)
         if isinstance(obj, str):
-            return self.load_file(obj)
+            return self.load_uri(Uri(obj), vocabulary)
 
-        raise ValueError(
+        raise TypeError(
             f"JsonStore.load() expects `obj` argument to be one of: `JsonUri`, `str`, `{type(obj)}` given."
         )
 
-    def load_uri(self, uri: Uri) -> JsonDocument:
+    def load_uri(self, uri: Uri, vocabulary: List[Keyword]) -> JsonSchema:
         base_uri = str(uri.base_uri)
-        if base_uri in self._cache:
-            return self._cache[base_uri]
+        if base_uri in self._storage:
+            return self._storage[base_uri]
 
-        document = self.load_file(self.resolver.resolve(uri))
-        self._cache[base_uri] = document
-
-        return document
-
-    def load_file(self, filename: str) -> JsonDocument:
-        if filename in self._cache:
-            return self._cache[filename]
-
-        file = open(filename, "r")
-        _, extension = path.splitext(file.name)
-        if extension not in _SUPPORTED_FORMATS:
-            raise ValueError(f"Unsupported file format `{extension}`, expected `json` or `yaml`.")
-
-        json = _SUPPORTED_FORMATS[extension](file)
-        document = JsonDocument(json, self.keywords)
-        self._cache[filename] = document
-
-        return document
+        try:
+            document = self.loader.load(uri, vocabulary)
+            self._storage[base_uri] = document
+            return document
+        except FileNotFoundError as e:
+            raise JsonLoadError.for_invalid_file(uri, e.filename) from e
 
     @classmethod
     def default(cls) -> JsonStore:
         if cls._instance is None:
             cls._instance = cls()
-            cls._instance.keywords.append(RefKeyword(cls._instance))
-            cls._instance.keywords.append(AnchorKeyword())
+            return cls._instance
 
         return cls._instance

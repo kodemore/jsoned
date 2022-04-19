@@ -13,6 +13,9 @@ class JsonPointer(Sequence[str]):
 
         self._nodes = [self.unescape(value) for value in pointer.split("/")[1:]]
 
+    def __contains__(self, item: str) -> bool:
+        return item in self._nodes
+
     @overload
     def __getitem__(self, index: int) -> str:
         ...
@@ -36,7 +39,7 @@ class JsonPointer(Sequence[str]):
 
     def __str__(self) -> str:
         if not self._nodes:
-            return ""
+            return "/"
         return "".join(["/" + self.escape(item) for item in self._nodes])
 
     def __iter__(self):
@@ -45,7 +48,7 @@ class JsonPointer(Sequence[str]):
     @classmethod
     def from_list(cls, pointer: List[str]) -> "JsonPointer":
         instance = JsonPointer.__new__(JsonPointer)
-        instance._nodes = [cls.escape(value) for value in pointer]
+        instance._nodes = pointer
 
         return instance
 

@@ -1,23 +1,28 @@
 from functools import cached_property
 from typing import Set, List
 
+from jsoned.json_core import ApplicatorKeyword, JsonSchema
 from jsoned.json_pointer import JsonPointer
-from jsoned.uri import Uri
-from jsoned.json_core import Keyword, JsonDocument, JsonLoader
-from jsoned.types.json_object import JsonObject
+from jsoned.json_store import JsonStore
+from jsoned.types.json_complex import JsonObject
 from jsoned.types.json_type import JsonType
+from jsoned.uri import Uri
 
 __all__ = ["JsonReference", "RefKeyword"]
 
 
 class JsonReference(JsonType):
-    type = "reference"
 
-    def __init__(self, uri: Uri, node: JsonObject, document: JsonDocument, pointer: JsonPointer):
+    def __init__(self, uri: Uri, node: JsonObject, document: JsonSchema, pointer: JsonPointer):
         self.uri = uri
         self.node = node
-        self.document = document
+        self.schema = document
         self.pointer = pointer
+        self.key = node.key
+
+    @property
+    def type(self) -> str:
+        return self.fragment.type
 
     @cached_property
     def parent(self) -> JsonType:
@@ -25,15 +30,23 @@ class JsonReference(JsonType):
 
     @cached_property
     def fragment(self) -> JsonType:
-        return self.document.query(self.pointer)
+        return self.schema.query(self.pointer)
+
+    @property
+    def _value(self):
+        if not self.schema.ready:
+            return self.node._value
+        else:
+            return self._ref_value
 
     @cached_property
-    def _value(self):
+    def _ref_value(self):
         fragment = self.fragment
-        if not isinstance(fragment, JsonObject):
+        if fragment.type != JsonType.OBJECT:
             return fragment
 
         result = {}
+
         for key, value in self.node.items():
             if key == "$ref":
                 continue
@@ -43,6 +56,9 @@ class JsonReference(JsonType):
             result[key] = value
 
         return result
+
+    def __contains__(self, key):
+        return key in self._value
 
     def __len__(self) -> int:
         return len(self._value)
@@ -61,19 +77,22 @@ class JsonReference(JsonType):
     def items(self):
         return self._value.items()
 
+    def __repr__(self) -> str:
+        return f"JsonReference({self.uri})"
 
-class RefKeyword(Keyword):
+
+class RefKeyword(ApplicatorKeyword):
     key: str = "$ref"
 
-    def __init__(self, loader: JsonLoader):
-        self.loader = loader
+    def __init__(self, store: JsonStore):
+        self.store = store
 
-    def resolve(self, document: JsonDocument, node: JsonObject) -> JsonType:
+    def apply(self, document: JsonSchema, node: JsonObject) -> JsonType:
         uri = Uri(str(node["$ref"]))
         pointer = JsonPointer(uri.fragment)
 
         if not uri.base_uri:  # reference to self document
             return JsonReference(uri, node, document, pointer)
 
-        referenced_document = self.loader.load(uri)
+        referenced_document = self.store.load(uri, document.vocabulary)
         return JsonReference(uri, node, referenced_document, pointer)

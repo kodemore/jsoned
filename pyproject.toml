@@ -13,6 +13,8 @@ rfc3986 = "^1.5.0"
 pytest = "^6.2.5"
 hypothesis = "^6.24.0"
 black = "^21.9b0"
+pytest-cov = "^3.0.0"
+jschon = "^0.8.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

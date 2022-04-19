@@ -1,6 +1,6 @@
 from jsoned.keywords import AnchorKeyword, RefKeyword
 from jsoned.keywords.ref_keyword import JsonReference
-from jsoned import JsonDocument, JsonStore, Uri
+from jsoned import JsonSchema, JsonStore, Uri
 from jsoned.types import JsonObject
 import secrets
 
@@ -23,11 +23,11 @@ def test_can_define_anchor() -> None:
                 "type": "array",
                 "items": {
                     "type": "object",
-                }
-            }
-        }
+                },
+            },
+        },
     }
-    doc = JsonDocument(json, [AnchorKeyword()])
+    doc = JsonSchema(json, [AnchorKeyword()])
 
     # when
     result = doc.query("/props")
@@ -45,30 +45,24 @@ def test_can_reference_defined_anchor() -> None:
             "$anchor": "base-object",
             "type": "object",
             "properties": {
-                "children": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/base-object"
-                    }
-                }
-            }
+                "children": {"type": "array", "items": {"$ref": "#/base-object"}}
+            },
         },
-        "strictObject": {
-            "additionalProperties": False,
-            "$ref": "#/base-object"
-        }
+        "strictObject": {"additionalProperties": False, "$ref": "#/base-object"},
     }
     store = JsonStore.default()
-    doc_uri = Uri(f"memory://{secrets.token_urlsafe(16)}/document.json")
-    json_doc = JsonDocument(json, [RefKeyword(store), AnchorKeyword()])
+    schema = JsonSchema(json, [RefKeyword(store), AnchorKeyword()])
 
     # when
-    store.add(doc_uri, json_doc)
-    parsed_doc = json_doc.value
+    generic_ref = schema.query("/genericObject/properties/children/items")
 
     # then
-    assert isinstance(parsed_doc["genericObject"]["properties"]["children"]["items"], JsonReference)
-    assert isinstance(parsed_doc["genericObject"]["properties"]["children"]["items"]["properties"], JsonObject)
-    assert "base-object" in json_doc.anchors
-    assert parsed_doc["genericObject"] == json_doc.anchors["base-object"]
-
+    assert isinstance(
+        generic_ref, JsonReference
+    )
+    assert isinstance(
+        generic_ref["properties"],
+        JsonObject,
+    )
+    assert "base-object" in schema.anchors
+    assert schema.query("/genericObject") == schema.anchors["base-object"]

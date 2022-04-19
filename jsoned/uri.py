@@ -10,6 +10,8 @@ from rfc3986.normalizers import (
     normalize_query,
 )
 
+__all__ = ["Authority", "Uri"]
+
 
 class Authority:
     def __init__(self, authority: str):
@@ -46,6 +48,31 @@ class Authority:
 
     def __repr__(self) -> str:
         return f"Authority({str(self)!r})"
+
+    @overload
+    def __eq__(self, other: str) -> bool:
+        ...
+
+    @overload
+    def __eq__(self, other: Uri) -> bool:
+        ...
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Authority):
+            return (
+                self._userinfo == other._userinfo
+                and self._host == other._host
+                and self._port == other._port
+            )
+
+        if isinstance(other, str):
+            other_uri = Authority(other)
+
+            return self == other_uri
+
+        raise TypeError(
+            f"Authority.__eq__ expects value to be `str` or `Authority`, `{type(other)}` passed instead."
+        )
 
 
 class Uri:

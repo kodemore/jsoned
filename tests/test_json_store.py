@@ -1,6 +1,8 @@
-from jsoned import JsonStore, JsonDocument
+from jsoned import JsonStore, JsonSchema
 import pytest
 from os import path
+
+from jsoned.errors import JsonLoadError
 
 
 def test_can_instantiate() -> None:
@@ -24,20 +26,21 @@ def test_can_fail_on_load_invalid_document() -> None:
     store = JsonStore.default()
 
     # then
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         store.load(False)
 
 
 def test_can_load_valid_json_file() -> None:
     # given
     store = JsonStore.default()
+
     file_name = path.join(path.dirname(__file__), "fixtures", "schema_plain.json")
 
     # when
     doc = store.load(file_name)
 
     # then
-    assert isinstance(doc, JsonDocument)
+    assert isinstance(doc, JsonSchema)
 
 
 def test_fail_on_non_existing_json_file() -> None:
@@ -46,7 +49,7 @@ def test_fail_on_non_existing_json_file() -> None:
     file_name = path.join(path.dirname(__file__), "fake", "schema_plain.json")
 
     # when
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(JsonLoadError):
         store.load(file_name)
 
 
