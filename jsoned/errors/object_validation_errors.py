@@ -1,4 +1,4 @@
-from jsoned.errors import ValidationError
+from jsoned.errors.validation_error import ValidationError
 
 
 class RequiredPropertyValidationError(ValidationError):

@@ -2,7 +2,6 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ConstValidationError
-from jsoned.errors import EnumValidationError
 from jsoned.keywords import ConstKeyword
 
 

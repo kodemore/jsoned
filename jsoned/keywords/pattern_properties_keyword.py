@@ -1,7 +1,7 @@
 from jsoned.errors.schema_parse_error import SchemaParseError
 from jsoned.json_core import AssertionKeyword, JsonSchema, LazyValidator
 from jsoned.types import JsonObject, JsonType
-from jsoned.validators.object_validators import PropertiesValidator
+from jsoned.validators.object_validators import ObjectValidator
 from jsoned.validators.core_validators import CompoundValidator
 
 
@@ -13,7 +13,7 @@ class PatternPropertiesKeyword(AssertionKeyword):
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
 
         if "properties" not in validator:
-            validator["properties"] = PropertiesValidator()
+            validator["properties"] = ObjectValidator()
 
         validator["properties"].pattern_properties = CompoundValidator()
 

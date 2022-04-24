@@ -2,7 +2,7 @@ from jsoned.errors.schema_parse_error import SchemaParseError
 from jsoned.json_core import AssertionKeyword, JsonSchema, LazyValidator
 from jsoned.types import JsonObject, JsonType
 from jsoned.validators.core_validators import CompoundValidator, FailValidator
-from jsoned.validators.object_validators import PropertiesValidator
+from jsoned.validators.object_validators import ObjectValidator
 
 
 class AdditionalPropertiesKeyword(AssertionKeyword):
@@ -13,7 +13,7 @@ class AdditionalPropertiesKeyword(AssertionKeyword):
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
 
         if "properties" not in validator:
-            validator["properties"] = PropertiesValidator()
+            validator["properties"] = ObjectValidator()
 
         if node[self.key].type == JsonType.BOOLEAN and node[self.key]:
             return  # additional properties are allowed

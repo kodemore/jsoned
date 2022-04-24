@@ -83,7 +83,7 @@ class CompoundValidator(Validator):
     def values(self):
         return self._data.values()
 
-    def validate(self, value: AnyJsonType, context: Context = Context()):
+    def validate(self, value, context: Context = Context()) -> None:
         for validator in self.values():
             validator(value, context)
 

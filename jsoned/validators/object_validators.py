@@ -37,7 +37,7 @@ class MaximumPropertiesValidator(Validator):
             raise MaximumPropertiesValidationError(path=context.path, expected_maximum=self.expected_maximum)
 
 
-class PropertiesValidator(CompoundValidator):
+class ObjectValidator(CompoundValidator):
     additional_properties: CompoundValidator = None
     pattern_properties: CompoundValidator = None
     unevaluated_properties: CompoundValidator = None
