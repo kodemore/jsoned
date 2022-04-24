@@ -11,9 +11,9 @@ from .types.json_complex import JsonObject, JsonArray
 from .types.json_type import JsonType
 from .uri import Uri
 from .utils import AnyJsonType
-from .validators.core_validators import CompoundValidator
+from .validators.core_validators import CompoundValidator, Validator, Context, FailValidator
 
-__all__ = ["build_validator_for_node", "JsonSchema", "Keyword", "ApplicatorKeyword", "AssertionKeyword", "Vocabulary"]
+__all__ = ["LazyValidator", "JsonSchema", "Keyword", "ApplicatorKeyword", "AssertionKeyword", "Vocabulary"]
 
 
 class Keyword(ABC):
@@ -39,7 +39,7 @@ class AssertionKeyword(Keyword, ABC):
     """
 
     @abstractmethod
-    def apply(self, document: JsonSchema, node: JsonObject, validator: CompoundValidator) -> CompoundValidator:
+    def apply(self, document: JsonSchema, node: JsonObject, validator: CompoundValidator):
         ...
 
 
@@ -61,17 +61,37 @@ def can_apply_keyword(node: JsonObject, keyword: Keyword) -> bool:
     return True
 
 
-def build_validator_for_node(schema: JsonSchema, node: Union[JsonObject, JsonType], validator: CompoundValidator) -> CompoundValidator:
-    for keyword in schema.vocabulary:
-        if not isinstance(keyword, AssertionKeyword):
-            continue
+class LazyValidator(CompoundValidator):
+    def __init__(self, schema: JsonSchema, node: JsonObject):
+        self._schema = schema
+        self._node = node
+        self._loaded = False
+        super().__init__()
 
-        if not can_apply_keyword(node, keyword):
-            continue
+    def _load_validator(self) -> None:
+        if self._node.type == JsonType.BOOLEAN:
+            if not self._node:
+                self["_"] = FailValidator()
 
-        validator = keyword.apply(schema, node, validator)
+            self._loaded = True
+            return
 
-    return validator
+        for keyword in self._schema.vocabulary:
+            if not isinstance(keyword, AssertionKeyword):
+                continue
+
+            if not can_apply_keyword(self._node, keyword):
+                continue
+
+            keyword.apply(self._schema, self._node, self)
+
+        self._loaded = True
+
+    def validate(self, value, context: Context = Context()) -> None:
+        if not self._loaded:
+            self._load_validator()
+
+        super().validate(value, context)
 
 
 class JsonSchema:
@@ -99,15 +119,12 @@ class JsonSchema:
             if self._value.type != JsonType.OBJECT:
                 self._validator = CompoundValidator()
             else:
-                self._validator = self._build_validator()
+                self._validator = LazyValidator(self, self._value)
 
         return self._validator
 
     def validate(self, value: AnyJsonType) -> Any:
         return self.validator.validate(value)
-
-    def _build_validator(self) -> CompoundValidator:
-        return build_validator_for_node(self, self._value, CompoundValidator())
 
     @property
     def id(self):

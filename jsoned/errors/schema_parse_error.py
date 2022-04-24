@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-__all__ = ["SchemaParseError"]
-
 from jsoned.json_pointer import JsonPointer
 from jsoned.types.json_complex import JsonObject
 from jsoned.types.json_type import JsonTypes
+
+__all__ = ["SchemaParseError"]
 
 
 class SchemaParseError(RuntimeError):

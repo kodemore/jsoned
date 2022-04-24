@@ -32,5 +32,5 @@ def test_fail_validation() -> None:
 
     error = e.value
     assert error.code == "type_error"
-    assert error.path == "/"
+    assert error.path == ""
     assert error.expected_types == ["object", "string"]

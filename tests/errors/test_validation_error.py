@@ -20,4 +20,4 @@ def test_can_subclass_with_parameters() -> None:
 
     # then
     assert instance.custom_field == "A"
-    assert str(instance) == "Failed validation at `/`. Some problem: A"
+    assert str(instance) == "Failed validation at ``. Some problem: A"

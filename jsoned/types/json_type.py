@@ -88,7 +88,7 @@ class JsonType(ABC):
         return bool(self._value)
 
     def __repr__(self) -> str:
-        return f"JsonValue({self._value})"
+        return f"{self._value})"
 
     def is_root(self) -> bool:
         return self.parent is None

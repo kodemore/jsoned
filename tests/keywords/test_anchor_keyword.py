@@ -1,8 +1,7 @@
+from jsoned import JsonSchema, JsonStore
 from jsoned.keywords import AnchorKeyword, RefKeyword
 from jsoned.keywords.ref_keyword import JsonReference
-from jsoned import JsonSchema, JsonStore, Uri
 from jsoned.types import JsonObject
-import secrets
 
 
 def test_can_instantiate() -> None:

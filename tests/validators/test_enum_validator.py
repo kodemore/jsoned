@@ -34,5 +34,5 @@ def test_fail_validation() -> None:
 
     error = e.value
     assert error.code == "enum_error"
-    assert error.path == "/"
+    assert error.path == ""
     assert error.expected_values == ["object", "string", 1, False]

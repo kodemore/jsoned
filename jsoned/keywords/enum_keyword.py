@@ -7,10 +7,8 @@ from jsoned.validators.core_validators import EnumValidator, CompoundValidator
 class EnumKeyword(AssertionKeyword):
     key = "enum"
 
-    def apply(self, document: JsonSchema, node: JsonObject, validator: CompoundValidator) -> CompoundValidator:
+    def apply(self, document: JsonSchema, node: JsonObject, validator: CompoundValidator):
         if node["enum"].type != JsonType.ARRAY:
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.ARRAY)
 
-        validator[self.key] = EnumValidator(expected_values=node["enum"].value, parent=validator)
-
-        return validator
+        validator[self.key] = EnumValidator(expected_values=node["enum"].value)

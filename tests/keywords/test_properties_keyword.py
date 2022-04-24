@@ -75,18 +75,12 @@ def test_can_fail_validation() -> None:
 
     # when
     with pytest.raises(ValidationError) as e:
-        schema.validate("1")
-
-    assert e.value.path == ""
-
-    # when
-    with pytest.raises(ValidationError) as e:
         schema.validate({"email": "invalid"})
 
-    assert e.value.path == ".email@format"
+    assert e.value.path == "email"
 
 
-def test_can_pass_ref_validation() -> None:
+def test_fails_ref_validation() -> None:
     # given
     document = {
         "properties": {
@@ -105,5 +99,33 @@ def test_can_pass_ref_validation() -> None:
     store = JsonStore.default()
     keywords = [PropertiesKeyword(), TypeKeyword(), FormatKeyword(), RefKeyword(store)]
     schema = JsonSchema(document, keywords)
-    schema.load()
-    schema.validate({"extra": {"extra": {"email": 1}}})
+
+    with pytest.raises(ValidationError) as e:
+        schema.validate({"extra": {"extra": {"email": 1}}})
+
+    error = e.value
+
+    assert error.path == "extra.extra.email"
+
+
+def test_passes_ref_validation() -> None:
+    # given
+    document = {
+        "properties": {
+            "name": {
+                "type": "string",
+            },
+            "email": {
+                "type": "string",
+                "format": "email",
+            },
+            "extra": {
+                "$ref": "#/"
+            }
+        }
+    }
+    store = JsonStore.default()
+    keywords = [PropertiesKeyword(), TypeKeyword(), FormatKeyword(), RefKeyword(store)]
+    schema = JsonSchema(document, keywords)
+
+    schema.validate({"extra": {"extra": {"email": "test@email.com"}}})

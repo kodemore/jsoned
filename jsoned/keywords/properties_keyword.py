@@ -1,43 +1,23 @@
-from typing import Dict, Any
-
-from jsoned.errors import TypeValidationError
 from jsoned.errors.schema_parse_error import SchemaParseError
-from jsoned.json_core import AssertionKeyword, JsonSchema, CompoundValidator, build_validator_for_node
+from jsoned.json_core import AssertionKeyword, JsonSchema, LazyValidator
 from jsoned.types import JsonObject, JsonType
-from jsoned.validators import Validator
-
-
-class PropertiesValidator(CompoundValidator):
-    def __init__(self, schema: JsonSchema, node: JsonObject, parent: Validator):
-        self._node = node
-        self._schema = schema
-        super().__init__(key="", parent=parent)
-
-    def validate(self, value: Dict[str, Any]):
-        if not isinstance(value, dict):
-            raise TypeValidationError(path=self.path, expected_types=["object"])
-
-        for key in self._node.keys():
-            if key not in value:
-                continue
-
-            if key not in self:
-                self[key] = build_validator_for_node(
-                    self._schema,
-                    self._node[key],
-                    CompoundValidator(key=f".{key}", parent=self)
-                )
-
-            self[key](value[key])
+from jsoned.validators.core_validators import CompoundValidator
+from jsoned.validators.object_validators import PropertiesValidator
 
 
 class PropertiesKeyword(AssertionKeyword):
     key = "properties"
 
-    def apply(self, document: JsonSchema, node: JsonObject, validator: CompoundValidator) -> CompoundValidator:
+    def apply(self, schema: JsonSchema, node: JsonObject, validator: CompoundValidator):
         if node[self.key].type != JsonType.OBJECT:
-            raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
+            raise SchemaParseError.for_invalid_keyword_value(node, "properties", JsonType.OBJECT)
 
-        validator[self.key] = PropertiesValidator(document, node[self.key], parent=validator)
+        if self.key in validator:
+            properties_validator = validator[self.key]
+        else:
+            properties_validator = PropertiesValidator()
 
-        return validator
+        for key, child_node in node[self.key].items():
+            properties_validator[key] = LazyValidator(schema, child_node)
+
+        validator[self.key] = properties_validator
