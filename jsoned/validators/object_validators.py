@@ -1,8 +1,10 @@
+import dataclasses
 import re
-from typing import List, Pattern, Dict
+from functools import partial
+from typing import List, Pattern, Dict, Callable
 
 from jsoned.errors.object_validation_errors import RequiredPropertyValidationError, MinimumPropertiesValidationError, \
-    MaximumPropertiesValidationError
+    MaximumPropertiesValidationError, DependentValidationError
 from jsoned.validators.core_validators import Validator, Context, CompoundValidator
 
 
@@ -75,3 +77,35 @@ class ObjectValidator(CompoundValidator):
 
             if self.unevaluated_properties:
                 self.unevaluated_properties.validate(item_value, context + item_key)
+
+
+class DependentRequiredValidator(Validator):
+    def __init__(self, dependent_map: Dict[str, List[str]]):
+        self._map = dependent_map
+        super().__init__()
+
+    def validate(self, value, context: Context = Context()) -> None:
+        if not isinstance(value, dict):
+            return
+
+        for key, items in self._map.items():
+            if key not in value:
+                continue
+
+            for item in items:
+                if item in value:
+                    continue
+
+                raise DependentValidationError(property=key, expected_property=item, path=context.path)
+
+
+class DependentSchemasValidator(CompoundValidator):
+    def validate(self, value, context: Context = Context()) -> None:
+        if not isinstance(value, dict):
+            return
+
+        for key, validator in self._data.items():
+            if key not in value:
+                continue
+
+            validator.validate(value, context)

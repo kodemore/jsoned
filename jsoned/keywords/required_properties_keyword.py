@@ -12,4 +12,4 @@ class RequiredPropertiesKeyword(AssertionKeyword):
         if node[self.key].type != JsonType.ARRAY:
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.ARRAY)
 
-        validator["required"] = RequiredPropertiesValidator([str(item) for item in node[self.key]])
+        validator[self.key] = RequiredPropertiesValidator([str(item) for item in node[self.key]])

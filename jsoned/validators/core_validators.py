@@ -116,6 +116,9 @@ class TypeValidator(Validator):
 
         asserted_type = self.TYPE_MAP[value_type]
         if asserted_type not in self._expected_types:
+            if asserted_type == "integer":
+                if "number" in self._expected_types:
+                    return
             raise TypeValidationError(expected_types=self._expected_types, path=context.path)
 
     def __repr__(self) -> str:
@@ -182,3 +185,4 @@ class ConstValidator(Validator):
 
         if value != self.expected_value:
             raise ConstValidationError(expected_value=self.expected_value, path=context.path)
+

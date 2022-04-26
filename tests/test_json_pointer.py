@@ -1,8 +1,7 @@
-import pytest
-from tests.fixtures import jsonpointer_fixture
 from hypothesis import given
 
 from jsoned import JsonPointer
+from tests.fixtures import jsonpointer_fixture
 
 
 @given(jsonpointer_fixture)

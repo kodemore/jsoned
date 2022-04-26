@@ -30,7 +30,7 @@ class NumberMinimumValidator(Validator):
         self.expected_minimum = expected_minimum
         self.exclusive = exclusive
 
-    def validate(self, value: NumberUnion, context: Context = Context()):
+    def validate(self, value: NumberUnion, context: Context = Context()) -> None:
         if self.exclusive and value <= self.expected_minimum:
             raise MinimumValidationError(expected_minimum=self.expected_minimum, path=context.path)
 
@@ -46,7 +46,7 @@ class NumberMaximumValidator(Validator):
         self.expected_maximum = expected_maximum
         self.exclusive = exclusive
 
-    def validate(self, value: NumberUnion, context: Context = Context()):
+    def validate(self, value: NumberUnion, context: Context = Context()) -> None:
         if self.exclusive and value >= self.expected_maximum:
             raise MaximumValidationError(expected_maximum=self.expected_maximum, path=context.path)
 

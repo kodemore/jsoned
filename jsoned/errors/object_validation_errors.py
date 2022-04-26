@@ -1,3 +1,5 @@
+from typing import List
+
 from jsoned.errors.validation_error import ValidationError
 
 
@@ -22,3 +24,9 @@ class MaximumPropertiesValidationError(ObjectSizeValidationError):
     code = "maximum_properties_error"
     message = "The number of properties is greater than expected maximum: {expected_maximum}."
 
+
+class DependentValidationError(ValidationError):
+    property: str
+    expected_property: str
+    code = "dependent_error"
+    message = "Property `{property}` requires `{expected_property}` to be provided."
