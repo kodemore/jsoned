@@ -2,8 +2,8 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
-from jsoned.json_core import LazyValidator
 from jsoned.keywords import PropertiesKeyword, AdditionalPropertiesKeyword, TypeKeyword, FormatKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -47,14 +47,13 @@ def test_can_pass_validate() -> None:
     schema = JsonSchema(document, keywords)
 
     # when
-    schema.validate({
+    valid = schema.validate({
         "name": "Bob",
         "age": 11
     })
 
     # then
-    assert "properties" in schema.validator
-    assert isinstance(schema.validator["properties"].additional_properties, LazyValidator)
+    assert valid
 
 
 def test_can_fail_validation() -> None:
@@ -75,7 +74,10 @@ def test_can_fail_validation() -> None:
     schema = JsonSchema(document, keywords)
 
     # when
-    schema.validate({"email": "test@email.com"})
+    assert schema.validate({"email": "test@email.com"})
 
-    with pytest.raises(ValidationError) as e:
-        schema.validate({"extra": 1})
+    context = Context()
+    assert not schema.validate({"extra": 1}, context)
+
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.PROPERTY_UNEXPECTED_ADDITIONAL_PROPERTY_ERROR

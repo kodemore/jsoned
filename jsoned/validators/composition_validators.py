@@ -1,80 +1,74 @@
 from jsoned.errors import ValidationError
 from jsoned.validators import Validator
-from jsoned.validators.core_validators import Context, CompoundValidator
+from jsoned.validators.core_validators import Context, ValidatorsIterable
 
 
-class AllOfValidator(Validator):
-    def __init__(self):
-        self.validators = []
+def validate_all(value, context: Context, validators: ValidatorsIterable) -> bool:
+    valid = True
+    for validator in validators:
+        if not validator(value, context):
+            valid = False
 
-    def validate(self, value, context: Context = Context()) -> None:
-        for validator in self.validators:
-            validator.validate(value, context)
-
-
-class AnyOfValidator(Validator):
-    def __init__(self):
-        self.validators = []
-
-    def validate(self, value, context: Context = Context()) -> None:
-        last_error = None
-        for validator in self.validators:
-            try:
-                validator.validate(value, context)
-                return
-            except ValidationError as error:
-                last_error = error
-
-        raise last_error
+    return valid
 
 
-class OneOfValidator(Validator):
-    def __init__(self):
-        self.validators = []
+def validate_any_of(value, context: Context, validators: ValidatorsIterable) -> bool:
+    valid = False
+    inner_context = Context()
 
-    def validate(self, value, context: Context = Context()) -> None:
-        valid = 0
-        last_error = None
-        for validator in self.validators:
-            try:
-                validator.validate(value, context)
-                valid += 1
-            except ValidationError as error:
-                last_error = error
+    for validator in validators:
+        if validator(value, inner_context):
+            valid = True
+            break
 
-        if valid < 1:
-            raise last_error
+    if not valid:
+        error_codes = []
+        for error in inner_context.errors:
+            error_codes.append(error.code)
+        context.errors.append(ValidationError.for_any_of(context.path, set(error_codes)))
 
-        if valid > 1:
-            raise ValidationError(
-                message="Passed value matches more than one expression, exactly one expected.",
-                path=context.path
-            )
+    return valid
 
 
-class NotValidator(Validator):
-    def __init__(self, validator: Validator):
-        self.validator = validator
+def validate_one_of(value, context: Context, validators: ValidatorsIterable) -> bool:
+    valid = 0
+    for validator in validators:
+        if validator(value, Context()):
+            valid += 1
 
-    def validate(self, value, context: Context = Context()) -> None:
-        try:
-            self.validator.validate(value, context)
-        except ValidationError:
-            return
-        raise ValidationError("Failed to validate the value.", path=context.path)
+    if valid == 1:
+        return True
+
+    context.errors.append(ValidationError.for_one_of(context.path))
+
+    return False
 
 
-class ConditionalValidator(CompoundValidator):
-    def validate(self, value, context: Context = Context()) -> None:
-        if "if" not in self:
-            return
+def validate_not(value, context: Context, validator: Validator) -> bool:
+    if not validator(value, context):
+        return True
 
-        try:
-            self["if"].validate(value, context)
-        except ValidationError:
-            if "else":
-                self["else"].validate(value, context)
-                return
+    context.errors.append(ValidationError.for_not(context.path))
+    return False
 
-        if "then" in self:
-            self["then"].validate(value, context)
+
+def validate_conditionally(
+    value,
+    context,
+    condition_if: Validator = None,
+    condition_then: Validator = None,
+    condition_else: Validator = None,
+):
+    if condition_if is None:
+        return True
+
+    if condition_if(value, context):
+        if condition_then is not None:
+            return condition_then(value, context)
+
+        return True
+
+    if condition_else is not None:
+        return condition_else(value, context)
+
+    return False

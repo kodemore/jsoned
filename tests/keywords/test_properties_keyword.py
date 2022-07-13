@@ -3,6 +3,7 @@ import pytest
 from jsoned import JsonSchema, JsonStore
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import PropertiesKeyword, TypeKeyword, FormatKeyword, RefKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -42,19 +43,11 @@ def test_can_pass_validate() -> None:
     keywords = [PropertiesKeyword(), TypeKeyword(), FormatKeyword()]
     schema = JsonSchema(document, keywords)
 
-    # when
-    schema.validate({
+    # then
+    assert schema.validate({
         "name": "Bob",
         "email": "bob@builder.com",
     })
-
-    # then
-    assert "properties" in schema.validator
-    assert "name" in schema.validator["properties"]
-    assert "email" in schema.validator["properties"]
-    assert "type" in schema.validator["properties"]["name"]
-    assert "type" in schema.validator["properties"]["email"]
-    assert "format" in schema.validator["properties"]["email"]
 
 
 def test_can_fail_validation() -> None:
@@ -72,12 +65,15 @@ def test_can_fail_validation() -> None:
     }
     keywords = [PropertiesKeyword(), TypeKeyword(), FormatKeyword()]
     schema = JsonSchema(document, keywords)
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate({"email": "invalid"})
+    assert not schema.validate({"email": "invalid"}, context)
 
-    assert e.value.path == "email"
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.STRING_FORMAT_ERROR
+    assert context.errors[0].path == "email"
 
 
 def test_fails_ref_validation() -> None:
@@ -99,13 +95,15 @@ def test_fails_ref_validation() -> None:
     store = JsonStore.default()
     keywords = [PropertiesKeyword(), TypeKeyword(), FormatKeyword(), RefKeyword(store)]
     schema = JsonSchema(document, keywords)
+    context = Context()
 
-    with pytest.raises(ValidationError) as e:
-        schema.validate({"extra": {"extra": {"email": 1}}})
+    # when
+    assert not schema.validate({"extra": {"extra": {"email": 1}}}, context)
 
-    error = e.value
-
-    assert error.path == "extra.extra.email"
+    # then
+    assert len(context.errors) == 2
+    assert context.errors[0].path == "extra.extra.email"
+    assert context.errors[1].path == "extra.extra.email"
 
 
 def test_passes_ref_validation() -> None:
@@ -128,4 +126,5 @@ def test_passes_ref_validation() -> None:
     keywords = [PropertiesKeyword(), TypeKeyword(), FormatKeyword(), RefKeyword(store)]
     schema = JsonSchema(document, keywords)
 
-    schema.validate({"extra": {"extra": {"email": "test@email.com"}}})
+    # then
+    assert schema.validate({"extra": {"extra": {"email": "test@email.com"}}})

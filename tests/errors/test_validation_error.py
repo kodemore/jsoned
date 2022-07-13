@@ -16,8 +16,8 @@ def test_can_subclass_with_parameters() -> None:
         custom_field: str
 
     # when
-    instance = CustomValidationError(custom_field="A")
+    instance = CustomValidationError("", custom_field="A")
 
     # then
-    assert instance.custom_field == "A"
-    assert str(instance) == "Failed validation at ``. Some problem: A"
+    assert instance["custom_field"] == "A"
+    assert str(instance) == "Some problem: A"

@@ -2,8 +2,9 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError
-from jsoned.errors.object_validation_errors import MaximumPropertiesValidationError
+from jsoned.errors import ValidationError
 from jsoned.keywords import MaximumPropertiesKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -35,8 +36,8 @@ def test_can_pass_validation() -> None:
     keyword = MaximumPropertiesKeyword()
     schema = JsonSchema(document, [keyword])
 
-    # when
-    schema.validate({"a": 1, "b": 2})
+    # then
+    assert schema.validate({"a": 1, "b": 2})
 
 
 def test_can_fail_validation() -> None:
@@ -47,10 +48,11 @@ def test_can_fail_validation() -> None:
 
     keyword = MaximumPropertiesKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(MaximumPropertiesValidationError) as e:
-        schema.validate({"a": 1, "b": 2, "c": 3})
+    assert not schema.validate({"a": 1, "b": 2, "c": 3}, context)
 
     # then
-    assert e.value.expected_maximum == 2
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.PROPERTY_MAXIMUM_LENGTH_ERROR

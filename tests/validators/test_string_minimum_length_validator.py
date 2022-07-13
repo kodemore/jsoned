@@ -1,29 +1,25 @@
-import pytest
+from functools import partial
 
-from jsoned.errors import MinimumValidationError, MinimumLengthValidationError
-from jsoned.validators.string_validators import StringMinimumLengthValidator
-
-
-def test_can_instantiate() -> None:
-    # given
-    instance = StringMinimumLengthValidator(10)
-
-    # then
-    assert isinstance(instance, StringMinimumLengthValidator)
+from jsoned.validators import Context
+from jsoned.validators.string_validators import validate_string
 
 
 def test_pass_validation() -> None:
     # given
-    instance = StringMinimumLengthValidator(3)
+    context = Context()
+    validate = partial(validate_string, context=context, expected_minimum_length=3)
 
     # then
-    instance("abc")
+    assert validate("abcd")
+    assert validate("bcd")
+    assert not context.errors
 
 
 def test_fail_validation() -> None:
     # given
-    instance = StringMinimumLengthValidator(10)
+    context = Context()
+    validate = partial(validate_string, context=context, expected_minimum_length=2)
 
     # then
-    with pytest.raises(MinimumLengthValidationError):
-        instance("abc")
+    assert not validate("a")
+    assert context.errors

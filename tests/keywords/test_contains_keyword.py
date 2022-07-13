@@ -1,8 +1,9 @@
 import pytest
 
 from jsoned import JsonSchema
-from jsoned.errors import SchemaParseError, ContainsValidationError
+from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import ContainsKeyword, TypeKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -35,8 +36,8 @@ def test_can_pass_validate() -> None:
     }
     schema = JsonSchema(document, [ContainsKeyword(), TypeKeyword()])
 
-    # when
-    schema.validate([True])
+    # then
+    assert schema.validate([True])
 
 
 def test_can_fail_validation() -> None:
@@ -48,7 +49,13 @@ def test_can_fail_validation() -> None:
     }
 
     schema = JsonSchema(document, [ContainsKeyword(), TypeKeyword()])
+    context = Context()
 
     # when
-    with pytest.raises(ContainsValidationError) as e:
-        schema.validate(["a"])
+    assert not schema.validate(["a"], context)
+
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.ARRAY_MIN_CONTAINS_ERROR
+
+

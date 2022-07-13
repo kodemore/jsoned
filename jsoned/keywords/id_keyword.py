@@ -1,6 +1,7 @@
-from typing import List, Tuple
+from typing import List
 
-from jsoned.json_core import ApplicatorKeyword, JsonSchema
+from jsoned.json_core import ApplicatorKeyword
+from jsoned.json_schema import JsonSchema
 from jsoned.json_store import JsonStore
 from jsoned.types.json_complex import JsonObject
 from jsoned.types.json_type import JsonType

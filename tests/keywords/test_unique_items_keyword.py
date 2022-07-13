@@ -2,7 +2,8 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
-from jsoned.keywords import UniqueItemsKeyword, FormatKeyword, TypeKeyword
+from jsoned.keywords import UniqueItemsKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -33,8 +34,8 @@ def test_can_pass_validation() -> None:
     }
     schema = JsonSchema(document, [UniqueItemsKeyword()])
 
-    # when
-    schema.validate(["abc@gmail.com", "ba@test.com"])
+    # then
+    assert schema.validate(["abc@gmail.com", "ba@test.com"])
 
 
 def test_can_fail_validation() -> None:
@@ -43,10 +44,12 @@ def test_can_fail_validation() -> None:
         "uniqueItems": True,
     }
     schema = JsonSchema(document, [UniqueItemsKeyword()])
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate(["abc@gmail.com", "abc@gmail.com"])
+    assert not schema.validate(["abc@gmail.com", "abc@gmail.com"], context)
 
     # then
-    assert e.value.path == "1"
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.ARRAY_NON_UNIQUE_ERROR
+    assert context.errors[0].path == "1"

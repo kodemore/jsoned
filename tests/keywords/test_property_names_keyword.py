@@ -3,6 +3,7 @@ import pytest
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import PropertyNamesKeyword, TypeKeyword, PatternKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -36,15 +37,11 @@ def test_can_pass_validate() -> None:
     keywords = [PropertyNamesKeyword(), PatternKeyword()]
     schema = JsonSchema(document, keywords)
 
-    # when
-    schema.validate({
+    # then
+    assert schema.validate({
         "a_name": "Bob",
         "an_email": "bob@builder.com",
     })
-
-    # then
-    assert "properties" in schema.validator
-    assert schema.validator["properties"].property_names
 
 
 def test_can_fail_validation() -> None:
@@ -56,9 +53,11 @@ def test_can_fail_validation() -> None:
     }
     keywords = [PropertyNamesKeyword(), PatternKeyword()]
     schema = JsonSchema(document, keywords)
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate({"email": "invalid"})
+    assert not schema.validate({"email": "invalid"}, context)
 
-    assert e.value.path == "email"
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.PROPERTY_INVALID_NAME_ERROR

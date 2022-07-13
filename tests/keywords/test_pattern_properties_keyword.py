@@ -3,6 +3,7 @@ import pytest
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import PatternPropertiesKeyword, TypeKeyword, FormatKeyword, PropertiesKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -21,7 +22,7 @@ def test_fail_to_parse() -> None:
     keyword = PatternPropertiesKeyword()
     schema = JsonSchema(document, [keyword])
 
-    # when
+    # then
     with pytest.raises(SchemaParseError):
         _ = schema.validate("abc")
 
@@ -37,16 +38,11 @@ def test_can_pass_validate() -> None:
     keywords = [PatternPropertiesKeyword(), TypeKeyword(), FormatKeyword()]
     schema = JsonSchema(document, keywords)
 
-    # when
-    schema.validate({
+    # then
+    assert schema.validate({
         "S_1": "Bob",
         "I_1": 20,
     })
-
-    # then
-    assert "properties" in schema.validator
-    assert "^S_" in schema.validator["properties"].pattern_properties
-    assert "^I_" in schema.validator["properties"].pattern_properties
 
 
 def test_can_fail_validation() -> None:
@@ -59,16 +55,17 @@ def test_can_fail_validation() -> None:
     }
     keywords = [PatternPropertiesKeyword(), TypeKeyword(), FormatKeyword()]
     schema = JsonSchema(document, keywords)
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate({
-            "S_1": 123,
-        })
+    assert not schema.validate({
+        "S_1": 123,
+    }, context)
 
     # then
-    error = e.value
-    assert error.path == "S_1"
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.TYPE_ERROR
+    assert context.errors[0].path == "S_1"
 
 
 def test_can_work_with_properties() -> None:
@@ -84,21 +81,24 @@ def test_can_work_with_properties() -> None:
     }
     keywords = [PropertiesKeyword(), PatternPropertiesKeyword(), TypeKeyword(), FormatKeyword()]
     schema = JsonSchema(document, keywords)
+    context = Context()
 
     # when
-    schema.validate({
+    assert schema.validate({
         "S_0": 123,
         "S_1": "string",
         "I_0": 123,
     })
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate({
+    assert not schema.validate({
             "S_0": "abc",
             "S_1": "string",
             "I_0": 123,
-        })
-    error = e.value
+    }, context)
 
-    assert error.path == "S_0"
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.TYPE_ERROR
+    assert context.errors[0].path == "S_0"
+

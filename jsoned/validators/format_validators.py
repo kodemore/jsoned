@@ -124,7 +124,7 @@ def validate_format_email(value: str) -> bool:
     Keep in mind this validator willfully violates RFC 5322, the best way to invalidate email address is to send
     a message and receive confirmation from the recipient.
     """
-    if not EMAIL_REGEX.match(value):
+    if not EMAIL_REGEX.match(str(value)):
         return False
     if ".." in value:
         return False

@@ -16,14 +16,14 @@ class SchemaParseError(RuntimeError):
 
     @classmethod
     def for_invalid_keyword_value(cls, node: JsonObject, keyword: str, expected_type: JsonTypes) -> 'SchemaParseError':
-        message = f"Parsing failed at `{node.path}`. Passed document is not a valid json schema object. "
-        f"`{keyword}` property has invalid type `{node[keyword].type}`, expected `{expected_type}` type."
+        message = f"Parsing failed at `{node.path}`. Passed document is not a valid json schema object. " \
+            f"`{keyword}` property has invalid type `{node[keyword].type}`, expected `{expected_type}` type."
 
         return cls(message, node.path)
 
     @classmethod
     def for_keyword_missing_dependency(cls, node: JsonObject, keyword: str, depends_on: str) -> 'SchemaParseError':
-        message = f"Parsing failed at `{node.path}`. Passed document is not a valid json schema object. "
-        f"`{keyword}` property depends on `{depends_on}` property to be present."
+        message = f"Parsing failed at `{node.path}`. Passed document is not a valid json schema object. " \
+            f"`{keyword}` property depends on `{depends_on}` property to be present."
 
         return cls(message, node.path)

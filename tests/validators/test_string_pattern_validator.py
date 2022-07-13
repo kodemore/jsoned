@@ -1,30 +1,26 @@
-import pytest
+import re
+from functools import partial
 
-from jsoned.errors import FormatValidationError
-from jsoned.validators.string_validators import StringPatternValidator
-
-
-def test_can_instantiate() -> None:
-    # given
-    instance = StringPatternValidator("email")
-
-    # then
-    assert isinstance(instance, StringPatternValidator)
+from jsoned.validators import Context
+from jsoned.validators.string_validators import validate_string
 
 
 def test_pass_validation() -> None:
     # given
-    instance = StringPatternValidator("[a-z]+")
+    context = Context()
+    validate = partial(validate_string, context=context, expected_pattern=re.compile("[a-z]+"))
 
     # then
-    instance("abcd")
-    instance("edfgkaoe")
+    assert validate("abcd")
+    assert validate("bcd")
+    assert not context.errors
 
 
 def test_fail_validation() -> None:
     # given
-    instance = StringPatternValidator("[a-z]+")
+    context = Context()
+    validate = partial(validate_string, context=context, expected_pattern=re.compile("[a-z]+"))
 
     # then
-    with pytest.raises(FormatValidationError):
-        instance("@")
+    assert not validate("123")
+    assert context.errors

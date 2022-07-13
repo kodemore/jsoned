@@ -3,6 +3,7 @@ import pytest
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import DependentSchemasKeyword, TypeKeyword, PropertiesKeyword, RequiredPropertiesKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -52,14 +53,14 @@ def test_can_pass_validate() -> None:
         [DependentSchemasKeyword(), TypeKeyword(), PropertiesKeyword(), RequiredPropertiesKeyword()]
     )
 
-    # when
-    schema.validate({
+    # then
+    assert schema.validate({
         "name": "John Doe",
         "credit_card": 5555555555555555,
         "billing_address": "555 Debtor's Lane"
     })
 
-    schema.validate({
+    assert schema.validate({
         "name": "John Doe",
         "billing_address": "555 Debtor's Lane"
     })
@@ -73,10 +74,6 @@ def test_can_fail_validation() -> None:
         "properties": {
             "name": {"type": "string"},
             "credit_card": {"type": "number"}
-        },
-
-        "patternProperties": {
-            ...,
         },
 
         "required": ["name"],
@@ -94,10 +91,14 @@ def test_can_fail_validation() -> None:
         document,
         [DependentSchemasKeyword(), TypeKeyword(), PropertiesKeyword(), RequiredPropertiesKeyword()]
     )
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate({
-            "name": "John Doe",
-            "credit_card": 5555555555555555
-        })
+    assert not schema.validate({
+        "name": "John Doe",
+        "credit_card": 5555555555555555
+    }, context)
+
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.PROPERTY_MISSING_ERROR

@@ -1,8 +1,9 @@
 import pytest
 
 from jsoned import JsonSchema
-from jsoned.errors import MaximumLengthValidationError, LengthValidationError, SchemaParseError
+from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import MaximumLengthKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -35,7 +36,7 @@ def test_can_pass_validation() -> None:
     schema = JsonSchema(document, [keyword])
 
     # when
-    schema.validate("abc")
+    assert schema.validate("abc")
 
 
 def test_can_fail_validation() -> None:
@@ -46,11 +47,11 @@ def test_can_fail_validation() -> None:
 
     keyword = MaximumLengthKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(MaximumLengthValidationError) as e:
-        schema.validate("abcd")
+    assert not schema.validate("abcd", context)
 
     # then
-    assert e.value.expected_maximum == 3
-    assert isinstance(e.value, LengthValidationError)
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.STRING_MAXIMUM_LENGTH_ERROR

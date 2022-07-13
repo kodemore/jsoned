@@ -2,7 +2,8 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
-from jsoned.keywords import PrefixItemsKeyword, FormatKeyword, TypeKeyword
+from jsoned.keywords import PrefixItemsKeyword, FormatKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -37,8 +38,8 @@ def test_can_pass_validation() -> None:
     }
     schema = JsonSchema(document, [PrefixItemsKeyword(), FormatKeyword()])
 
-    # when
-    schema.validate(["abc@gmail.com"])
+    # then
+    assert schema.validate(["abc@gmail.com"])
 
 
 def test_can_fail_validation() -> None:
@@ -51,10 +52,11 @@ def test_can_fail_validation() -> None:
         ]
     }
     schema = JsonSchema(document, [PrefixItemsKeyword(), FormatKeyword()])
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate([".com"])
+    assert not schema.validate([".com"], context)
 
     # then
-    assert e.value.path == "0"
+    assert context.errors[0].code == ValidationError.ErrorCodes.STRING_FORMAT_ERROR
+    assert context.errors[0].path == "0"

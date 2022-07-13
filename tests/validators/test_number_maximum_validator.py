@@ -1,50 +1,51 @@
 from decimal import Decimal
 
-import pytest
+from pytest import mark
 
-from jsoned.errors import MaximumValidationError
-from jsoned.validators.number_validators import NumberMaximumValidator
-
-
-def test_can_instantiate() -> None:
-    # given
-    instance = NumberMaximumValidator(Decimal("10"))
-
-    # then
-    assert isinstance(instance, NumberMaximumValidator)
+from jsoned.validators import Context
+from jsoned.validators import validate_number
 
 
-def test_pass_validation() -> None:
-    # given
-    instance = NumberMaximumValidator(Decimal("10"))
-
-    # then
-    instance(10)
-    instance(9)
-
-
-def test_pass_validation_with_exclusive_flag() -> None:
-    # given
-    instance = NumberMaximumValidator(Decimal("10"), exclusive=True)
-
-    # then
-    instance(9)
-    instance(8)
+@mark.parametrize("value,expected_maximum", [
+    [10, Decimal("10")],
+    [10.1, Decimal("10.2")],
+    [10.2, Decimal("10.2")],
+    [0, Decimal("0")],
+])
+def test_pass_validation(value, expected_maximum: Decimal) -> None:
+    context = Context()
+    assert validate_number(value, context, expected_maximum=expected_maximum)
+    assert not context.errors
 
 
-def test_fail_validation() -> None:
-    # given
-    instance = NumberMaximumValidator(Decimal("10"))
+@mark.parametrize("value,expected_maximum", [
+    [11, Decimal("10")],
+    [10.3, Decimal("10.2")],
+    [0, Decimal("-1")],
+])
+def test_fail_validation(value, expected_maximum: Decimal) -> None:
+    context = Context()
+    assert not validate_number(value, context, expected_maximum=expected_maximum)
+    assert context.errors
 
-    # then
-    with pytest.raises(MaximumValidationError):
-        instance(11)
+
+@mark.parametrize("value,expected_maximum", [
+    [9.9, Decimal("10")],
+    [9, Decimal("9.1")],
+    [-1, Decimal("0")],
+])
+def test_pass_exclusive_validation(value, expected_maximum: Decimal) -> None:
+    context = Context()
+    assert validate_number(value, context, expected_maximum=expected_maximum, exclusive_comparison=True)
+    assert not context.errors
 
 
-def test_fail_validation_with_exclusive_flag() -> None:
-    # given
-    instance = NumberMaximumValidator(Decimal("10"), exclusive=True)
-
-    # then
-    with pytest.raises(MaximumValidationError):
-        instance(10)
+@mark.parametrize("value,expected_maximum", [
+    [10, Decimal("10")],
+    [10.2, Decimal("10.2")],
+    [-1, Decimal("-1")],
+])
+def test_fail_exclusive_validation(value, expected_maximum: Decimal) -> None:
+    context = Context()
+    assert not validate_number(value, context, expected_maximum=expected_maximum, exclusive_comparison=True)
+    assert context.errors

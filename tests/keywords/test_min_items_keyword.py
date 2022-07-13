@@ -1,9 +1,9 @@
 import pytest
 
 from jsoned import JsonSchema
-from jsoned.errors import MinimumItemsValidationError
-from jsoned.errors import SchemaParseError
+from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import MinimumItemsKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -36,7 +36,7 @@ def test_can_pass_validation() -> None:
     schema = JsonSchema(document, [keyword])
 
     # when
-    schema.validate([1, 2, 3])
+    assert schema.validate([1, 2, 3])
 
 
 def test_can_fail_validation() -> None:
@@ -47,10 +47,11 @@ def test_can_fail_validation() -> None:
 
     keyword = MinimumItemsKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(MinimumItemsValidationError) as e:
-        schema.validate([1])
+    assert not schema.validate([1], context)
 
     # then
-    assert e.value.expected_minimum == 3
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.ARRAY_MIN_LENGTH_ERROR

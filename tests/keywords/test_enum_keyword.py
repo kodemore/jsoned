@@ -2,8 +2,9 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError
-from jsoned.errors import EnumValidationError
+from jsoned.errors import ValidationError
 from jsoned.keywords import EnumKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -35,9 +36,9 @@ def test_can_pass_validate() -> None:
     keyword = EnumKeyword()
     schema = JsonSchema(document, [keyword])
 
-    # when
-    schema.validate("a")
-    schema.validate(1)
+    # then
+    assert schema.validate("a")
+    assert schema.validate(1)
 
 
 def test_can_fail_validation() -> None:
@@ -48,11 +49,12 @@ def test_can_fail_validation() -> None:
 
     keyword = EnumKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(EnumValidationError) as e:
-        schema.validate(True)
+    assert not schema.validate(True, context)
 
     # then
-    assert e.value.expected_values == ["a", 1]
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.ENUM_ERROR
 

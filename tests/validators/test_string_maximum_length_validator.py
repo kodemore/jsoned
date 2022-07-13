@@ -1,30 +1,25 @@
-import pytest
+from functools import partial
 
-from jsoned.errors import MaximumLengthValidationError
-from jsoned.validators.string_validators import StringMaximumLengthValidator
-
-
-def test_can_instantiate() -> None:
-    # given
-    instance = StringMaximumLengthValidator(10)
-
-    # then
-    assert isinstance(instance, StringMaximumLengthValidator)
+from jsoned.validators import Context
+from jsoned.validators.string_validators import validate_string
 
 
 def test_pass_validation() -> None:
     # given
-    instance = StringMaximumLengthValidator(3)
+    context = Context()
+    validate = partial(validate_string, context=context, expected_maximum_length=3)
 
     # then
-    instance("abc")
-    instance("bc")
+    assert validate("abc")
+    assert validate("bc")
+    assert not context.errors
 
 
 def test_fail_validation() -> None:
     # given
-    instance = StringMaximumLengthValidator(2)
+    context = Context()
+    validate = partial(validate_string, context=context, expected_maximum_length=2)
 
     # then
-    with pytest.raises(MaximumLengthValidationError):
-        instance("abc")
+    assert not validate("abc")
+    assert context.errors

@@ -2,8 +2,9 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError
-from jsoned.errors.string_validation_errors import MinimumLengthValidationError, LengthValidationError
+from jsoned.errors import ValidationError
 from jsoned.keywords import MinimumLengthKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -35,8 +36,8 @@ def test_can_pass_validation() -> None:
     keyword = MinimumLengthKeyword()
     schema = JsonSchema(document, [keyword])
 
-    # when
-    schema.validate("abc")
+    # then
+    assert schema.validate("abc")
 
 
 def test_can_fail_validation() -> None:
@@ -47,11 +48,11 @@ def test_can_fail_validation() -> None:
 
     keyword = MinimumLengthKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(MinimumLengthValidationError) as e:
-        schema.validate("1")
+    assert not schema.validate("1", context)
 
     # then
-    assert e.value.expected_minimum == 3
-    assert isinstance(e.value, LengthValidationError)
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.STRING_MINIMUM_LENGTH_ERROR

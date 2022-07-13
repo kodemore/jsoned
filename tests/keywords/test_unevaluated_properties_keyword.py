@@ -3,6 +3,7 @@ import pytest
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import PropertiesKeyword, UnevaluatedPropertiesKeyword, TypeKeyword, FormatKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -44,13 +45,9 @@ def test_can_pass_validate() -> None:
     schema = JsonSchema(document, keywords)
 
     # when
-    schema.validate({
+    assert schema.validate({
         "name": "Bob",
     })
-
-    # then
-    assert "properties" in schema.validator
-    assert schema.validator["properties"].unevaluated_properties
 
 
 def test_can_fail_validation() -> None:
@@ -69,9 +66,11 @@ def test_can_fail_validation() -> None:
     }
     keywords = [PropertiesKeyword(), UnevaluatedPropertiesKeyword(), TypeKeyword(), FormatKeyword()]
     schema = JsonSchema(document, keywords)
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate({"extra": 1})
+    assert not schema.validate({"extra": 1}, context)
 
-    assert e.value.path == "extra"
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.PROPERTY_UNEVALUATED_ERROR

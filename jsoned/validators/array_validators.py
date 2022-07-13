@@ -1,95 +1,118 @@
-from typing import List
+from typing import Iterable, Sized, Union
 
-from jsoned.errors import ValidationError, MinimumContainsValidationError, MaximumContainsValidationError
-from jsoned.errors.array_validation_errors import MinimumItemsValidationError, MaximumItemsValidationError, \
-    UniqueItemsValidationError
-from jsoned.errors.core_validation_errors import TypeValidationError
-from jsoned.types import JsonType
-from jsoned.validators.core_validators import CompoundValidator, Context, Validator
+from jsoned.errors import ValidationError
+from jsoned.validators.core_validators import Context, Validator, ValidatorsCollection
 
 
-class ArrayValidator(CompoundValidator):
-    items: CompoundValidator = None
-    prefix_items: List[CompoundValidator] = None
+def validate_array_items(value: Iterable, context: Context, items_validator: Validator) -> bool:
+    valid = True
+    for index, item in enumerate(value):
+        if not items_validator(item, context + str(index)):
+            valid = False
 
-    def validate(self, value, context: Context = Context()):
-        if not isinstance(value, list):
-            raise TypeValidationError(expected_types=[str(JsonType.ARRAY)])
-
-        index = 0
-        if self.prefix_items:
-            while index < len(self.prefix_items):
-                if index >= len(value):
-                    self.prefix_items[index].validate(None, context + str(index))
-                    continue
-
-                self.prefix_items[index].validate(value[index], context + str(index))
-                index += 1
-
-        if self.items is None:
-            return
-
-        while index < len(value):
-            self.items.validate(value[index], context + str(index))
-            index += 1
+    return valid
 
 
-class ArrayContainsValidator(Validator):
-    minimum_contains: int = 1
-    maximum_contains: int = None
+def validate_array_prefixed_items(value: Iterable, context: Context, items_validator: ValidatorsCollection, additional_items: Union[bool, Validator] = True) -> bool:
+    i = -1
+    valid = True
+    additional_items = additional_items or False
 
-    def __init__(self, checker: Validator):
-        self.item_validator = checker
+    for item in value:
+        i += 1
+        if i < len(items_validator):
+            validator = items_validator[i]
+            if not validator(item, context + str(i)):
+                valid = False
+        elif isinstance(additional_items, bool):
+            if additional_items is True:
+                break
+            if additional_items is False:
+                valid = False
+                context.errors.append(ValidationError.for_array_additional_items(context.path, index=i))
+                break
+        elif not additional_items(item):
+            valid = False
+            break
 
-    def validate(self, value, context: Context = Context()) -> None:
-        valid = 0
-        for item in value:
-            try:
-                self.item_validator.validate(item)
-                valid += 1
-            except ValidationError:
-                continue
-
-        if valid < self.minimum_contains:
-            raise MinimumContainsValidationError(expected_minimum=self.minimum_contains, path=context.path)
-
-        if self.maximum_contains and valid > self.maximum_contains:
-            raise MaximumContainsValidationError(expected_maximum=self.maximum_contains, path=context.path)
-
-
-class ArrayMinimumLengthValidator(Validator):
-    def __init__(self, expected_minimum: int):
-        self.expected_minimum = expected_minimum
-
-    def validate(self, value, context: Context = Context()) -> None:
-        if len(value) >= self.expected_minimum:
-            return value
-
-        raise MinimumItemsValidationError(expected_minimum=self.expected_minimum, path=context.path)
-
-    def __repr__(self) -> str:
-        return f"validate_minimum_items({self.expected_minimum})"
+    return valid
 
 
-class ArrayMaximumLengthValidator(Validator):
-    def __init__(self, expected_maximum: int):
-        self.expected_maximum = expected_maximum
+def validate_array_contains(
+    value: Iterable,
+    context: Context,
+    item_validator: Validator,
+    minimum_contains: int = 0,
+    maximum_contains: int = 0
+) -> bool:
+    contains_count = 0
+    valid = True
 
-    def validate(self, value, context: Context = Context()) -> None:
-        if len(value) <= self.expected_maximum:
-            return value
+    for item in value:
+        if item_validator(item, Context()):
+            contains_count += 1
 
-        raise MaximumItemsValidationError(expected_maximum=self.expected_maximum, path=context.path)
+    if minimum_contains and contains_count < minimum_contains:
+        valid = False
+        context.errors.append(
+            ValidationError.for_array_minimum_contains(context.path, expected_minimum=minimum_contains)
+        )
 
-    def __repr__(self) -> str:
-        return f"validate_maximum_items({self.expected_maximum})"
+    if maximum_contains and contains_count > maximum_contains:
+        valid = False
+        context.errors.append(
+            ValidationError.for_array_maximum_contains(context.path, expected_maximum=maximum_contains)
+        )
+
+    if not minimum_contains and contains_count < 1:
+        context.errors.append(
+            ValidationError.for_array_minimum_contains(context.path, expected_minimum=1)
+        )
+        valid = False
+
+    return valid
 
 
-class ArrayUniqueValidators(Validator):
-    def validate(self, value, context: Context = Context()) -> None:
-        seen = set()
-        for key, item in enumerate(value):
-            if item in seen:
-                raise UniqueItemsValidationError(path=context.path + str(key))
+def validate_array_length(
+    value: Iterable,
+    context: Context,
+    expected_minimum: int = 0,
+    expected_maximum: int = 0,
+) -> bool:
+    valid = True
+    if isinstance(value, Sized):
+        value_length = len(value)
+    else:
+        value_length = len([1 for _ in value])
+
+    if expected_minimum and value_length < expected_minimum:
+        valid = False
+        context.errors.append(
+            ValidationError.for_array_minimum_length(context.path, expected_minimum=expected_minimum)
+        )
+
+    if expected_maximum and value_length > expected_maximum:
+        valid = False
+        context.errors.append(
+            ValidationError.for_array_maximum_length(context.path, expected_maximum=expected_maximum)
+        )
+
+    return valid
+
+
+def validate_array_unique(value: Iterable, context: Context) -> bool:
+    valid = True
+    seen = set()
+    i = 0
+    for item in value:
+        if item not in seen:
             seen.add(item)
+        else:
+            valid = False
+            context.errors.append(
+                ValidationError.for_array_non_unique(context.path + str(i))
+            )
+            break
+        i += 1
 
+    return valid

@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from abc import abstractmethod, ABC
+from abc import abstractmethod
+from collections import Iterable
 from decimal import Decimal
-from typing import Any, List, overload, Dict, Tuple
+from enum import Enum
+from functools import partial
+from typing import Any, List, overload, Dict, Tuple, Callable, Iterator, Mapping, Collection, \
+    Generic, TypeVar, Union
 
 from jsoned.errors import ValidationError
-from jsoned.errors.core_validation_errors import TypeValidationError, EnumValidationError, ConstValidationError
-from jsoned.types import JsonType
-from jsoned.utils import AnyJsonType
 
 
 class Context:
     def __init__(self):
         self._data = {}
+        self._errors: List[ValidationError] = []
         self._path: Tuple[str] = tuple()
 
     def __getitem__(self, key: str) -> None:
@@ -30,8 +32,9 @@ class Context:
     def keys(self):
         return self._data.keys()
 
-    def __repr__(self):
-        return f"Context({self.path})"
+    @property
+    def errors(self) -> List[ValidationError]:
+        return self._errors
 
     @property
     def path(self) -> str:
@@ -40,149 +43,217 @@ class Context:
     def __add__(self, key: str) -> Context:
         context = Context()
         context._path = self._path + tuple([key])
+        context._data = {}
+        context._errors = self._errors
+
+        return context
+
+    def with_path(self) -> Context:
+        context = Context()
+        context._path = self._path
 
         return context
 
 
-class Validator(ABC):
-    @abstractmethod
-    def validate(self, value, context: Context = Context()) -> None:
+Validator = Union[Callable[[Any, Context], bool], partial[bool]]
+
+
+class ValidatorsIterable(Iterable):
+    @overload
+    def __iter__(self) -> Iterator[Validator]:
         ...
 
-    def __call__(self, value: AnyJsonType, context: Context = Context()):
-        self.validate(value, context)
+    @abstractmethod
+    def __iter__(self):
+        ...
 
-    def __repr__(self) -> str:
-        return f"validate"
+    @abstractmethod
+    def __bool__(self) -> bool:
+        ...
 
 
-class CompoundValidator(Validator):
-    def __init__(self):
-        self._data: Dict[str, Validator] = {}
+class ValidatorsCollection(Collection, ValidatorsIterable):
+    def __init__(self, data: List[Validator] = None):
+        self._data = data or []
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self):
+        return iter(self._data)
 
     @overload
-    def __setitem__(self, key: str, value: Validator) -> None:
+    def __getitem__(self, i: int) -> Validator:
         ...
 
-    def __setitem__(self, key, value) -> None:
+    @overload
+    def __getitem__(self, i: slice) -> ValidatorsCollection:
+        ...
+
+    def __getitem__(self, i):
+        if isinstance(i, slice):
+            return self.__class__(self._data[i])
+        else:
+            return self._data[i]
+
+    def __setitem__(self, i, item):
+        self._data[i] = item
+
+    def append(self, item: Validator, **kwargs) -> None:
+        if kwargs:
+            self._data.append(partial(item, **kwargs))
+            return
+        self._data.append(item)
+
+    @overload
+    def __contains__(self, item: Validator) -> bool:
+        ...
+
+    def __contains__(self, item):
+        return item in self._data
+
+    def __bool__(self) -> bool:
+        return len(self._data) > 0
+
+
+T = TypeVar('T')
+
+
+class ValidatorsMap(Mapping, ValidatorsIterable, Generic[T]):
+    __slots__ = ["_data"]
+
+    def __init__(self):
+        self._data: Dict[T, Validator] = {}
+
+    @overload
+    def __setitem__(self, key: T, value: Validator) -> None:
+        ...
+
+    def __setitem__(self, key, value):
         self._data[key] = value
 
     @overload
-    def __getitem__(self, key: str) -> Validator:
+    def __getitem__(self, key: T) -> Validator:
         ...
 
     def __getitem__(self, key):
         return self._data[key]
 
+    @overload
+    def __contains__(self, key: T) -> bool:
+        ...
+
     def __contains__(self, key):
         return key in self._data
 
-    def items(self):
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self):
+        return iter(self._data.values())
+
+    def __bool__(self) -> bool:
+        return len(self._data) > 0
+
+    def items(self) -> Iterable[Tuple[str, Callable]]:
         return self._data.items()
 
-    def values(self):
+    def keys(self) -> Iterable[str]:
+        return self._data.keys()
+
+    def values(self) -> Iterable[Callable]:
         return self._data.values()
 
-    def validate(self, value, context: Context = Context()) -> None:
-        for validator in self.values():
-            validator(value, context)
 
-    def __call__(self, value: AnyJsonType, context: Context = Context()):
-        self.validate(value, context)
+class AssertType(Enum):
+    STRING = "string"
+    INTEGER = "integer"
+    NUMBER = "number"
+    BOOLEAN = "boolean"
+    ARRAY = "array"
+    OBJECT = "object"
+    NULL = "null"
 
-    def __repr__(self) -> str:
-        return f"validate({self._data})"
-
-
-class TypeValidator(Validator):
-    TYPE_MAP = {
-        str: "string",
-        int: "integer",
-        float: "number",
-        Decimal: "number",
-        bool: "boolean",
-        list: "array",
-        dict: "object",
-        type(None): "null",
-    }
-
-    def __init__(self, expected_types: List[str]):
-        self._expected_types = expected_types
-
-    def validate(self, value, context: Context = Context()) -> None:
-        value_type = type(value)
-        if value_type not in self.TYPE_MAP:
-            raise TypeValidationError(expected_types=self._expected_types, path=context.path)
-
-        asserted_type = self.TYPE_MAP[value_type]
-        if asserted_type not in self._expected_types:
-            if asserted_type == "integer":
-                if "number" in self._expected_types:
-                    return
-            raise TypeValidationError(expected_types=self._expected_types, path=context.path)
-
-    def __repr__(self) -> str:
-        return f"validate_type({self._expected_types})"
+    def __str__(self) -> str:
+        return self.value
 
 
-class PassValidator(Validator):
-    def validate(self, value, context: Context = Context()) -> None:
-        return
+_TYPE_MAP: Dict[TypeVar, AssertType] = {
+    str: AssertType.STRING,
+    int: AssertType.INTEGER,
+    float: AssertType.NUMBER,
+    Decimal: AssertType.NUMBER,
+    bool: AssertType.BOOLEAN,
+    list: AssertType.ARRAY,
+    dict: AssertType.OBJECT,
+    type(None): AssertType.NULL,
+}
 
 
-class FailValidator(Validator):
-    def validate(self, value, context: Context = Context()) -> None:
-        raise ValidationError(f"Unexpected `{value}` value passed.", path=context.path)
+def validate_type(value, context: Context, expected_types: List[AssertType]) -> bool:
+    value_type = type(value)
+    if value_type not in _TYPE_MAP:
+        context.errors.append(ValidationError.for_type(path=context.path, expected_types=[str(item) for item in expected_types]))
+        return False
+
+    assert_type = _TYPE_MAP[value_type]
+    if assert_type in expected_types:
+        return True
+
+    if assert_type == AssertType.INTEGER and AssertType.NUMBER in expected_types:
+        return True
+
+    context.errors.append(ValidationError.for_type(path=context.path, expected_types=[str(item) for item in expected_types]))
+    return False
 
 
-class EnumValidator(Validator):
-    def __init__(self, expected_values: List[Any]):
-        self._contains_booleans = False
-        self._expected_values = []
-
-        for value in expected_values:
-            if isinstance(value, JsonType):
-                value = value.value
-
-            if type(value) == bool:
-                self._contains_booleans = True
-            self._expected_values.append(value)
-
-    def validate(self, value, context: Context = Context()) -> None:
-        if type(value) == bool and not self._contains_booleans:
-            raise EnumValidationError(expected_values=self._expected_values, path=context.path)
-
-        # tweak for bool checking
-        if self._contains_booleans and value == 1 or value == 0:
-            for item in self._expected_values:
-                if item == value:
-                    if type(item) == bool or type(value) == bool:
-                        if type(item) == type(value):
-                            return
-                        else:
-                            continue
-                    return
-
-            raise EnumValidationError(expected_values=self._expected_values, path=context.path)
-
-        # normal scenario
-        if value in self._expected_values:
-            return value
-
-        raise EnumValidationError(expected_values=self._expected_values, path=context.path)
-
-    def __repr__(self) -> str:
-        return f"validate_enum({self._expected_values})"
+def pass_validation(value, context: Context) -> bool:
+    return True
 
 
-class ConstValidator(Validator):
-    def __init__(self, expected_value: Any):
-        self.expected_value = expected_value
+def fail_validation(value, context: Context) -> bool:
+    context.errors.append(ValidationError(context.path))
+    return False
 
-    def validate(self, value, context: Context = Context()) -> None:
-        if (isinstance(self.expected_value, bool) or isinstance(value, bool)) and type(value) != type(self.expected_value):
-            raise ConstValidationError(expected_value=self.expected_value, path=context.path)
 
-        if value != self.expected_value:
-            raise ConstValidationError(expected_value=self.expected_value, path=context.path)
+def validate_enum(value, context: Context, expected_values: List[Union[str, Decimal, int, bool]]) -> bool:
+    for item in expected_values:
+        if value != item:
+            continue
 
+        # fix python's bool to int casting
+        if type(item) is bool or type(value) is bool:
+            if type(value) == type(item):
+                return True
+            continue
+        else:
+            return True
+
+    context.errors.append(ValidationError.for_enum(context.path, expected_values=expected_values))
+    return False
+
+
+def validate_const(value, context: Context, expected_value: Any) -> bool:
+    if value != expected_value:
+        context.errors.append(ValidationError.for_equal(context.path, expected_value=expected_value))
+        return False
+
+    if isinstance(expected_value, list):
+        if [type(item) for item in expected_value] == [type(item) for item in value]:
+            return True
+        context.errors.append(ValidationError.for_equal(context.path, expected_value=expected_value))
+        return False
+
+    if isinstance(expected_value, dict):
+        if [(type(k), type(v)) for k, v in expected_value.items()] == [(type(k), type(v)) for k, v in value.items()]:
+            return True
+        context.errors.append(ValidationError.for_equal(context.path, expected_value=expected_value))
+        return False
+
+    if type(expected_value) is bool or type(value) is bool:
+        if type(value) is type(expected_value):
+            return True
+        context.errors.append(ValidationError.for_equal(context.path, expected_value=expected_value))
+        return False
+
+    return True

@@ -8,7 +8,8 @@ from os import path
 
 from yaml import FullLoader as YamlFullLoader, load as _load_yaml
 
-from jsoned.json_core import JsonSchema, Vocabulary
+from jsoned.json_core import Vocabulary
+from jsoned.json_schema import JsonSchema
 from .uri import Uri
 from .uri_resolver import UriResolver
 
