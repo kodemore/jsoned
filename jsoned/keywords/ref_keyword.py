@@ -88,8 +88,16 @@ class RefKeyword(ApplicatorKeyword):
         self.store = store
 
     def apply(self, document: JsonSchema, node: JsonObject) -> JsonType:
-        uri = Uri(str(node["$ref"]))
-        pointer = JsonPointer(uri.fragment)
+        ref_value = str(node["$ref"])
+
+        if ref_value.startswith("#"):  # self reference
+            uri = Uri(ref_value)
+        else:
+            uri = document.id.resolve(ref_value)  # global reference
+
+        uri_fragment = "/" + uri.fragment if uri.fragment[0] != "/" else uri.fragment
+
+        pointer = JsonPointer(uri_fragment)
 
         if not uri.base_uri:  # reference to self document
             return JsonReference(uri, node, document, pointer)

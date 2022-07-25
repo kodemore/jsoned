@@ -5,6 +5,7 @@ from decimal import Decimal
 from ipaddress import AddressValueError, IPv4Address, IPv6Address
 from typing import Any
 from uuid import UUID
+import rfc3987
 
 from jsoned.iso_datetime import (
     parse_iso_date,
@@ -24,11 +25,15 @@ __all__ = [
     "validate_format_ip_address",
     "validate_format_ip_address_v4",
     "validate_format_ip_address_v6",
+    "validate_json_pointer",
     "validate_format_pattern",
     "validate_format_semver",
     "validate_format_time",
     "validate_format_time_duration",
     "validate_format_uri",
+    "validate_format_iri",
+    "validate_format_iri_reference",
+    "validate_format_uri_reference",
     "validate_format_url",
     "validate_format_uuid",
 ]
@@ -103,6 +108,9 @@ def validate_format_time_duration(value: Any) -> bool:
     if isinstance(value, timedelta):
         return True
 
+    if isinstance(value, str):
+        return True
+
     value = str(value)
     try:
         parse_iso_duration(value)
@@ -139,7 +147,17 @@ HOSTNAME_REGEX = re.compile(
 
 
 def validate_format_hostname(value: str) -> bool:
-    if not HOSTNAME_REGEX.match(value):
+    if not HOSTNAME_REGEX.match(str(value)):
+        return False
+
+    return True
+
+
+JSON_POINTER_REGEX = re.compile(r"(/(([^/~])|(~[01]))*)")
+
+
+def validate_json_pointer(value: str) -> bool:
+    if not JSON_POINTER_REGEX.match(str(value)):
         return False
 
     return True
@@ -202,29 +220,28 @@ def validate_format_semver(value: Any) -> bool:
     return True
 
 
-URI_REGEX = re.compile(r"^(?:[a-z][a-z0-9+-.]*:)(?:\\/?\\/)?[^\s]*$", re.I)
-
-
 def validate_format_uri(value: Any) -> bool:
-    value = str(value)
-    if not URI_REGEX.match(value):
-        return False
-
-    return True
+    return bool(rfc3987.match(value, "URI"))
 
 
-URL_REGEX = re.compile(
-    r"^(?:(?:https?|ftp):\/\/)(?:\S+(?::\S*)?@)?(?:(?!10(?:\.\d{1,3}){3})(?!127(?:\.\d{1,3}){3})(?!169\.254(?:\.\d{1,3}){2})(?!192\.168(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9_]+-?)*[a-z\u00a1-\uffff0-9_]+)(?:\.(?:[a-z\u00a1-\uffff0-9_]+-?)*[a-z\u00a1-\uffff0-9_]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:\/[^\s]*)?$",
-    re.I | re.U,
-)
+def validate_format_uri_reference(value: Any) -> bool:
+    return bool(rfc3987.match(value, "URI_reference"))
+
+
+def validate_format_uri_template(value: Any) -> bool:
+    return bool(rfc3987.match(value, "URI_reference"))
 
 
 def validate_format_url(value: Any) -> bool:
-    value = str(value)
-    if not URL_REGEX.match(value):
-        return False
+    return bool(rfc3987.match(value, "absolute_URI"))
 
-    return True
+
+def validate_format_iri(value: Any) -> bool:
+    return bool(rfc3987.match(value, "IRI"))
+
+
+def validate_format_iri_reference(value: Any) -> bool:
+    return bool(rfc3987.match(value, "IRI_reference"))
 
 
 def validate_format_uuid(value: Any) -> bool:

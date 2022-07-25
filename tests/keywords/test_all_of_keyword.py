@@ -4,6 +4,7 @@ from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import AllOfKeyword, TypeKeyword, MaximumLengthKeyword
 from jsoned.validators import Context
+from jsoned.vocabulary import DRAFT_2020_12_VOCABULARY
 
 
 def test_can_instantiate() -> None:
@@ -59,3 +60,15 @@ def test_can_fail_validation() -> None:
     assert context.errors
     assert context.errors[0].code == ValidationError.ErrorCodes.STRING_MAXIMUM_LENGTH_ERROR
 
+
+def test_all_of_mismatch_second() -> None:
+    # given
+    document = {'allOf': [
+        {'properties': {'bar': {'type': 'integer'}}, 'required': ['bar']},
+        {'properties': {'foo': {'type': 'string'}}, 'required': ['foo']}
+    ]}
+    data = {'foo': 'baz'}
+    schema = JsonSchema(document, vocabulary=DRAFT_2020_12_VOCABULARY)
+
+    # then
+    assert not schema.validate(data)

@@ -1,25 +1,39 @@
+from typing import List
+
 from jsoned.errors import ValidationError
 from jsoned.validators import Validator
 from jsoned.validators.core_validators import Context, ValidatorsIterable
 
+_STACK_VALIDATORS = tuple(["unevaluatedProperties", "unevaluatedItems"])
+
 
 def validate_all(value, context: Context, validators: ValidatorsIterable) -> bool:
     valid = True
-    for validator in validators:
+    stacked_validators: List[Validator] = []
+    for index, validator in validators.items():
+        if index in _STACK_VALIDATORS:
+            stacked_validators.append(index)
+            continue
         if not validator(value, context):
             valid = False
+            break
+
+    if stacked_validators:
+        for validator in stacked_validators:
+            if not validators[validator](value, context):
+                valid = False
+                break
 
     return valid
 
 
 def validate_any_of(value, context: Context, validators: ValidatorsIterable) -> bool:
     valid = False
-    inner_context = Context()
 
+    inner_context = context.fork()
     for validator in validators:
         if validator(value, inner_context):
             valid = True
-            break
 
     if not valid:
         error_codes = []
@@ -33,7 +47,7 @@ def validate_any_of(value, context: Context, validators: ValidatorsIterable) -> 
 def validate_one_of(value, context: Context, validators: ValidatorsIterable) -> bool:
     valid = 0
     for validator in validators:
-        if validator(value, Context()):
+        if validator(value, context.fork()):
             valid += 1
 
     if valid == 1:
@@ -71,4 +85,4 @@ def validate_conditionally(
     if condition_else is not None:
         return condition_else(value, context)
 
-    return False
+    return True

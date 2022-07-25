@@ -9,6 +9,12 @@ from jsoned.validators.core_validators import Context, ValidatorsMap, Validator
 
 
 def validate_minimum(value, context: Context, expected_minimum: Decimal, exclusive: bool = False) -> bool:
+    if not isinstance(value, Decimal):
+        try:
+            value = Decimal(str(value))
+        except Exception:  # Ignore non-numeric types
+            return True
+
     if exclusive:
         return validate_exclusive_minimum(value, context, expected_minimum)
 
@@ -22,6 +28,12 @@ def validate_minimum(value, context: Context, expected_minimum: Decimal, exclusi
 
 
 def validate_exclusive_minimum(value, context: Context, expected_minimum: Decimal) -> bool:
+    if not isinstance(value, Decimal):
+        try:
+            value = Decimal(str(value))
+        except Exception:  # Ignore non-numeric types
+            return True
+
     if value <= expected_minimum:
         context.errors.append(
             ValidationError.for_number_exclusive_minimum(path=context.path, expected_minimum=expected_minimum)
@@ -32,6 +44,12 @@ def validate_exclusive_minimum(value, context: Context, expected_minimum: Decima
 
 
 def validate_maximum(value, context: Context, expected_maximum: Decimal, exclusive: bool = False) -> bool:
+    if not isinstance(value, Decimal):
+        try:
+            value = Decimal(str(value))
+        except Exception:  # Ignore non-numeric types
+            return True
+
     if exclusive:
         return validate_exclusive_maximum(value, context, expected_maximum)
 
@@ -45,6 +63,12 @@ def validate_maximum(value, context: Context, expected_maximum: Decimal, exclusi
 
 
 def validate_exclusive_maximum(value, context: Context, expected_maximum: Decimal) -> bool:
+    if not isinstance(value, Decimal):
+        try:
+            value = Decimal(str(value))
+        except Exception:  # Ignore non-numeric types
+            return True
+
     if value >= expected_maximum:
         context.errors.append(
             ValidationError.for_number_exclusive_maximum(path=context.path, expected_maximum=expected_maximum)
@@ -55,10 +79,19 @@ def validate_exclusive_maximum(value, context: Context, expected_maximum: Decima
 
 
 def validate_multiple_of(value, context: Context, multiple_of: Decimal) -> bool:
-    if value % multiple_of != 0:  # type: ignore
-        context.errors.append(
-            ValidationError.for_number_multiple_of(path=context.path, multiple_of=multiple_of)
-        )
+    if not isinstance(value, Decimal):
+        try:
+            value = Decimal(str(value))
+        except Exception:  # Ignore non-numeric types
+            return True
+
+    try:
+        if value % multiple_of != 0:  # type: ignore
+            context.errors.append(
+                ValidationError.for_number_multiple_of(path=context.path, multiple_of=multiple_of)
+            )
+            return False
+    except Exception:
         return False
 
     return True

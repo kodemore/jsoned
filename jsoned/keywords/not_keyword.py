@@ -12,7 +12,7 @@ class NotKeyword(AssertionKeyword):
     key = "not"
 
     def apply(self, schema: JsonSchema, node: JsonObject, validator: ValidatorsMap):
-        if node[self.key].type != JsonType.OBJECT:
+        if node[self.key].type != JsonType.OBJECT and node[self.key].type != JsonType.BOOLEAN:
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
 
         child_validator = partial(

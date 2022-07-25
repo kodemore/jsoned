@@ -34,5 +34,6 @@ from .ref_keyword import RefKeyword
 from .required_properties_keyword import RequiredPropertiesKeyword
 from .then_keyword import ThenKeyword
 from .type_keyword import TypeKeyword
+from .unevaluated_items_keyword import UnevaluatedItemsKeyword
 from .unevaluated_properties_keyword import UnevaluatedPropertiesKeyword
 from .unique_items_keyword import UniqueItemsKeyword

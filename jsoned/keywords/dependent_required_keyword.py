@@ -8,13 +8,15 @@ from jsoned.validators.object_validators import validate_dependent_required_prop
 
 
 class DependentRequiredKeyword(AssertionKeyword):
-    key = "dependentRequired"
+    key = ["dependentRequired", "dependencies"]
 
     def apply(self, document: JsonSchema, node: JsonObject, validator: ValidatorsMap):
-        if node[self.key].type != JsonType.OBJECT:
-            raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
+        keyword = "dependentRequired" if "dependentRequired" in node else "dependencies"
 
-        dependency_map = {key: [str(item) for item in items] for key, items in node[self.key].items()}
+        if node[keyword].type != JsonType.OBJECT:
+            raise SchemaParseError.for_invalid_keyword_value(node, keyword, JsonType.OBJECT)
+
+        dependency_map = {key: [str(item) for item in items] for key, items in node[keyword].items()}
 
         child_validator = partial(validate_dependent_required_properties, dependency_map=dependency_map)
-        validator[self.key] = child_validator
+        validator["dependentRequired"] = child_validator

@@ -32,7 +32,7 @@ class PrefixItemsKeyword(AssertionKeyword):
         elif "items" in node and node["items"].type == JsonType.BOOLEAN:
             additional_items = bool(node["items"])
         else:
-            additional_items = False
+            additional_items = None
 
         validator[self.key] = partial(
             validate_array_prefixed_items,

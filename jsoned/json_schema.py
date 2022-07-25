@@ -8,6 +8,7 @@ from typing import List, Union
 from .json_core import JsonSchema as BaseJsonSchema, can_apply_keyword, Vocabulary, ApplicatorKeyword, Keyword
 from .json_pointer import JsonPointer
 from .types.json_complex import JsonObject, JsonArray
+from .types.json_boolean import JsonBoolean
 from .types.json_type import JsonType
 from .uri import Uri
 from .utils import AnyJsonType
@@ -19,13 +20,15 @@ __all__ = ["JsonSchema"]
 
 class JsonSchema(BaseJsonSchema):
     def __init__(self, value: Union[JsonObject, JsonArray, Dict[str, AnyJsonType], List[AnyJsonType]], vocabulary: List[Keyword] = None):
-        if not isinstance(value, (dict, list, JsonObject, JsonArray)):
+        if not isinstance(value, (dict, list, bool, JsonObject, JsonArray, JsonBoolean)):
             raise ValueError(f"JsonSchema.__init__ accepts dict, list, JsonObject or JsonArray `{value!r}` given instead.")
 
         if isinstance(value, dict):
             value = JsonObject(value)
         elif isinstance(value, list):
             value = JsonArray(value)
+        elif isinstance(value, bool):
+            value = JsonBoolean(value)
 
         self._value: JsonType = value
         self.ready = False
@@ -43,10 +46,7 @@ class JsonSchema(BaseJsonSchema):
         self.load()
 
         if self._validator is None:
-            if self._value.type != JsonType.OBJECT:
-                self._validator = ValidatorsMap()
-            else:
-                self._validator = partial(deferred_validator, schema=self, node=self._value)
+            self._validator = partial(deferred_validator, schema=self, node=self._value)
 
         return self._validator
 
@@ -78,14 +78,12 @@ class JsonSchema(BaseJsonSchema):
     def load(self) -> None:
         if self.ready:
             return
-
+        self.ready = True
         # process applicator keywords only on-load
         self._value = self._process_node(
             self._value,
             [keyword for keyword in self.vocabulary if isinstance(keyword, ApplicatorKeyword)]
         )
-
-        self.ready = True
 
     @overload
     def query(self, query: str) -> JsonType:
@@ -129,7 +127,12 @@ class JsonSchema(BaseJsonSchema):
         return node
 
     def _process_node(self, node: JsonType, keywords: Vocabulary) -> JsonType:
-        if node.type != JsonType.OBJECT:
+        if node.type == JsonType.ARRAY:
+            node._value = [
+                self._process_node(value, keywords) for value in node
+            ]
+            return node
+        elif node.type != JsonType.OBJECT:
             return node
 
         node._value = {

@@ -4,7 +4,7 @@ from jsoned.errors.schema_parse_error import SchemaParseError
 from jsoned.json_core import AssertionKeyword, JsonSchema
 from jsoned.types import JsonObject, JsonType
 from jsoned.validators.array_validators import validate_array_items, validate_array_prefixed_items
-from jsoned.validators.core_validators import ValidatorsMap, ValidatorsCollection
+from jsoned.validators.core_validators import ValidatorsMap, ValidatorsCollection, fail_validation
 from jsoned.validators.deferred_validator import deferred_validator
 
 
@@ -16,7 +16,7 @@ class ItemsKeyword(AssertionKeyword):
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
 
         # items with prefixed items should be handled by PrefixedItemsKeyword
-        if "prefixedItems" in node:
+        if "prefixItems" in node:
             return
 
         # array prefixed items validator
@@ -38,7 +38,6 @@ class ItemsKeyword(AssertionKeyword):
                     )
                 else:
                     raise SchemaParseError.for_invalid_keyword_value(node, "additionalItems", JsonType.OBJECT)
-            validator[self.key] = child_validator
 
         # array validator
         elif node[self.key].type == JsonType.OBJECT:
@@ -46,7 +45,16 @@ class ItemsKeyword(AssertionKeyword):
                 validate_array_items,
                 items_validator=partial(deferred_validator, schema=schema, node=node[self.key])
             )
-            validator[self.key] = child_validator
 
-        # items can be of boolean type and support indexedItems keyword and we ignore this
-        # option here
+        elif node[self.key].type == JsonType.BOOLEAN and not node[self.key]:
+            child_validator = partial(
+                validate_array_items,
+                items_validator=fail_validation
+            )
+        else:
+            # items can be of boolean type and support indexedItems keyword and we ignore this
+            # option here
+
+            return
+
+        validator[self.key] = child_validator

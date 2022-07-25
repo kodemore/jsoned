@@ -40,6 +40,7 @@ class ValidationError(ValueError):
         ARRAY_MIN_CONTAINS_ERROR = "array_min_contains_error"
         ARRAY_MAX_CONTAINS_ERROR = "array_min_contains_error"
         ARRAY_ADDITIONAL_ITEMS_ERROR = "array_additional_items_error"
+        ARRAY_UNEVALUATED_ITEMS_ERROR = "array_unevaluated_items_error"
         ARRAY_NON_UNIQUE_ERROR = "array_non_unique_error"
         ARRAY_MIN_LENGTH_ERROR = "array_minimum_length_error"
         ARRAY_MAX_LENGTH_ERROR = "array_maximum_length_error"
@@ -317,6 +318,15 @@ class ValidationError(ValueError):
         return cls(
             message="Array should not contain additional items, additional item at index `{index}` found.",
             code=ValidationError.ErrorCodes.ARRAY_ADDITIONAL_ITEMS_ERROR,
+            path=path,
+            index=index,
+        )
+
+    @classmethod
+    def for_array_unevaluated_items(cls, path: str, index: int) -> ValidationError:
+        return cls(
+            message="Array should not contain unevaluated items, unevaluated item at index `{index}` found.",
+            code=ValidationError.ErrorCodes.ARRAY_UNEVALUATED_ITEMS_ERROR,
             path=path,
             index=index,
         )

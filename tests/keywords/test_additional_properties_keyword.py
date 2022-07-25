@@ -4,6 +4,7 @@ from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import PropertiesKeyword, AdditionalPropertiesKeyword, TypeKeyword, FormatKeyword
 from jsoned.validators import Context
+from jsoned.vocabulary import DRAFT_2020_12_VOCABULARY
 
 
 def test_can_instantiate() -> None:
@@ -81,3 +82,25 @@ def test_can_fail_validation() -> None:
 
     assert len(context.errors) == 1
     assert context.errors[0].code == ValidationError.ErrorCodes.PROPERTY_UNEXPECTED_ADDITIONAL_PROPERTY_ERROR
+
+
+def test_additional_properties_are_not_pattern_properties() -> None:
+    # given
+    document = {'additionalProperties': False, 'patternProperties': {'^v': {}}, 'properties': {'bar': {}, 'foo': {}}}
+    data = {'foo': 1, 'vroom': 2}
+    schema = JsonSchema(document, vocabulary=DRAFT_2020_12_VOCABULARY)
+    context = Context()
+
+    # then
+    assert schema.validate(data, context)
+
+
+def test_additional_properties_being_false_does_not_allow_other_properties() -> None:
+    # given
+    document = {'additionalProperties': False, 'patternProperties': {'^v': {}}, 'properties': {'bar': {}, 'foo': {}}}
+    data = {'bar': 2, 'foo': 1, 'quux': 'boom'}
+    schema = JsonSchema(document, vocabulary=DRAFT_2020_12_VOCABULARY)
+    context = Context()
+
+    # then
+    assert not schema.validate(data, context)

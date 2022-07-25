@@ -12,13 +12,13 @@ class ContainsKeyword(AssertionKeyword):
     key = "contains"
 
     def apply(self, schema: JsonSchema, node: JsonObject, validator: ValidatorsMap):
-        if node[self.key].type != JsonType.OBJECT:
+        if node[self.key].type != JsonType.OBJECT and node[self.key].type != JsonType.BOOLEAN:
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
 
-        if "items" in validator:
-            array_validator = validator["items"]
-        else:
-            array_validator = partial(validate_array_contains, item_validator=partial(deferred_validator, schema=schema, node=node[self.key]))
+        array_validator = partial(
+            validate_array_contains,
+            item_validator=partial(deferred_validator, schema=schema, node=node[self.key])
+        )
 
         if "minContains" in node:
             if node["minContains"].type != JsonType.NUMBER:

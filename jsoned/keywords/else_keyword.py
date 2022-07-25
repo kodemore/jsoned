@@ -12,8 +12,12 @@ class ElseKeyword(AssertionKeyword):
     key = "else"
 
     def apply(self, document: JsonSchema, node: JsonObject, validator: ValidatorsMap):
-        if node[self.key].type != JsonType.OBJECT:
+        if node[self.key].type != JsonType.OBJECT and node[self.key].type != JsonType.BOOLEAN:
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
+
+        # if `if` is not present this should be ignored
+        if "if" not in node:
+            return
 
         # We have to respect if keyword whenever possible
         if "if" in validator:

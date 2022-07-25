@@ -63,6 +63,9 @@ def validate_string_length(
     expected_minimum: int = 0,
     expected_maximum: int = 0,
 ) -> bool:
+    if not isinstance(value, str):
+        return True
+
     current_length = len(value)
 
     if expected_minimum >= 0 and current_length < expected_minimum:
@@ -81,6 +84,8 @@ def validate_string_length(
 
 
 def validate_string_format(value, context: Context, expected_format: str) -> bool:
+    if not isinstance(value, str):
+        return True
     format_validator = StringFormat[expected_format]
     if not format_validator(value):
         context.errors.append(
@@ -92,6 +97,8 @@ def validate_string_format(value, context: Context, expected_format: str) -> boo
 
 
 def validate_string_pattern(value, context: Context, expected_pattern: str) -> bool:
+    if not isinstance(value, str):
+        return True
     pattern = re.compile(expected_pattern)
     if not pattern.search(value):
         context.errors.append(

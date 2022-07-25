@@ -14,11 +14,29 @@ def validate_object_properties(
     pattern_properties: ValidatorsMap[Pattern] = None,
     unevaluated_properties: bool = True,
 ) -> bool:
+    # ignore non-object values
+    if not isinstance(value, dict):
+        return True
+
     for name, item in value.items():
-        evaluated = False
+        found = False
         if properties and name in properties:
             if not properties[name](item, context + name):
                 return False
+            found = True
+
+        # pattern properties can invalidate properties
+        if pattern_properties:
+            for pattern, validator in pattern_properties.items():
+                if pattern.search(name):
+                    if not validator(item, context + name):
+                        return False
+                    else:
+                        found = True
+
+        # if property already validated by property or pattern property we should
+        # move to next property
+        if found:
             continue
 
         property_name_context = context.with_path()
@@ -32,21 +50,13 @@ def validate_object_properties(
             )
             return False
 
-        if pattern_properties:
-            for pattern, validator in pattern_properties.items():
-                if not pattern.match(name):
-                    continue
-                if not validator(item, context + name):
-                    return False
-                evaluated = True
-
         if additional_properties:
             if not additional_properties(item, Context()):
                 context.errors.append(ValidationError.for_additional_property(path=(context + name).path, property_name=name))
                 return False
             continue
 
-        if not unevaluated_properties and not evaluated:
+        if not unevaluated_properties:
             context.errors.append(ValidationError.for_unevaluated_property(path=context.path, property_name=name))
             return False
 
@@ -54,6 +64,9 @@ def validate_object_properties(
 
 
 def validate_required_properties(value: Mapping, context: Context, expected_properties: List[str]) -> bool:
+    if not isinstance(value, dict):  # ignore non-objects
+        return True
+
     for name in expected_properties:
         if name in value:
             continue
@@ -65,6 +78,9 @@ def validate_required_properties(value: Mapping, context: Context, expected_prop
 
 
 def validate_dependent_required_properties(value, context: Context, dependency_map: Dict[str, List[str]]) -> bool:
+    if not isinstance(value, dict):  # ignore non-objects
+        return True
+
     for name, dependants in dependency_map.items():
         if name not in value:
             continue
@@ -80,6 +96,9 @@ def validate_dependent_required_properties(value, context: Context, dependency_m
 
 
 def validate_dependent_schemas(value, context: Context, dependent_schemas: ValidatorsMap[str]) -> bool:
+    if not isinstance(value, dict):  # ignore non-objects
+        return True
+
     for schema_property, validator in dependent_schemas.items():
         if schema_property not in value:
             continue
@@ -91,6 +110,9 @@ def validate_dependent_schemas(value, context: Context, dependent_schemas: Valid
 
 
 def validate_minimum_properties(value, context, expected_minimum: int) -> bool:
+    if not isinstance(value, dict):  # ignore non-objects
+        return True
+
     if len(value) < expected_minimum:
         context.errors.append(ValidationError.for_property_minimum_length(context, expected_minimum=expected_minimum))
         return False
@@ -99,6 +121,9 @@ def validate_minimum_properties(value, context, expected_minimum: int) -> bool:
 
 
 def validate_maximum_properties(value, context, expected_maximum: int) -> bool:
+    if not isinstance(value, dict):  # ignore non-objects
+        return True
+
     if len(value) > expected_maximum:
         context.errors.append(ValidationError.for_property_maximum_length(context, expected_maximum=expected_maximum))
         return False

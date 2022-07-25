@@ -12,17 +12,22 @@ __all__ = ["IdKeyword"]
 
 class IdKeyword(ApplicatorKeyword):
     key: List[str] = ["$id", "id"]
+    _resolved = []
 
     def __init__(self, store: JsonStore):
         self._store = store
 
     def apply(self, schema: JsonSchema, node: JsonObject) -> JsonType:
         uri = Uri(str(node["$id"]) if "$id" in node else str(node["id"]))
+
+        del node["$id"]
+        del node["id"]
+
         if uri.fragment:
             raise ValueError(f"`$id` cannot contain document fragment, `{uri.fragment}` found.")
 
         if node.is_root():  # id of the document
-            schema.id = Uri(str(node["$id"]) if "$id" in node else str(node["id"]))
+            schema.id = uri
             if uri not in self._store:
                 self._store.add(uri, schema)
             return node
@@ -50,6 +55,7 @@ class IdKeyword(ApplicatorKeyword):
         # this document is being stored in a global json store.
         child_document = JsonSchema(node, schema.vocabulary)
         child_document.id = uri
+        child_document.load()
         self._store.add(uri, child_document)
 
         return node

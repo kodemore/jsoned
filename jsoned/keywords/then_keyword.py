@@ -12,9 +12,13 @@ class ThenKeyword(AssertionKeyword):
     key = "then"
 
     def apply(self, schema: JsonSchema, node: JsonObject, validator: ValidatorsMap):
-        
+
         if node[self.key].type != JsonType.OBJECT:
             raise SchemaParseError.for_invalid_keyword_value(node, self.key, JsonType.OBJECT)
+
+        # if `if` is not present this should be ignored
+        if "if" not in node:
+            return
 
         # We have to respect if keyword whenever possible
         if "if" in validator:
