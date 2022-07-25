@@ -9,7 +9,10 @@ class AnchorKeyword(ApplicatorKeyword):
     key: str = "$anchor"
 
     def apply(self, document: JsonSchema, node: JsonObject) -> JsonType:
+        # ignore $anchor in enum or in const
+        if "enum" in node.path or "const" in node.path:
+            return node
+
         document.anchors[str(node["$anchor"])] = node
-        del node["$anchor"]
 
         return node

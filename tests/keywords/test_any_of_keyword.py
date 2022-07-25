@@ -3,6 +3,7 @@ import pytest
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import AnyOfKeyword, TypeKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -36,9 +37,9 @@ def test_can_pass_validate() -> None:
     }
     schema = JsonSchema(document, [AnyOfKeyword(), TypeKeyword()])
 
-    # when
-    schema.validate("test")
-    schema.validate(12)
+    # then
+    assert schema.validate("test")
+    assert schema.validate(12)
 
 
 def test_can_fail_validation() -> None:
@@ -50,10 +51,19 @@ def test_can_fail_validation() -> None:
         ],
     }
     schema = JsonSchema(document, [AnyOfKeyword(), TypeKeyword()])
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError):
-        schema.validate(11.2)
+    assert not schema.validate(11.2, context)
 
-    with pytest.raises(ValidationError):
-        schema.validate(False)
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.ANY_OF_ERROR
+
+    # when
+    context = Context()
+    assert not schema.validate(False, context)
+
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.ANY_OF_ERROR

@@ -3,6 +3,8 @@ import pytest
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import AllOfKeyword, TypeKeyword, MaximumLengthKeyword
+from jsoned.validators import Context
+from jsoned.vocabulary import DRAFT_2020_12_VOCABULARY
 
 
 def test_can_instantiate() -> None:
@@ -37,7 +39,7 @@ def test_can_pass_validate() -> None:
     schema = JsonSchema(document, [AllOfKeyword(), TypeKeyword(), MaximumLengthKeyword()])
 
     # when
-    schema.validate("test")
+    assert schema.validate("test")
 
 
 def test_can_fail_validation() -> None:
@@ -49,17 +51,24 @@ def test_can_fail_validation() -> None:
         ],
     }
     schema = JsonSchema(document, [AllOfKeyword(), TypeKeyword(), MaximumLengthKeyword()])
+    context = Context()
 
     # when
-    with pytest.raises(ValidationError) as e:
-        schema.validate("too long to pass the test")
+    assert not schema.validate("too long to pass the test", context)
 
     # then
-    assert e.value.path == ""
+    assert context.errors
+    assert context.errors[0].code == ValidationError.ErrorCodes.STRING_MAXIMUM_LENGTH_ERROR
 
-    with pytest.raises(ValidationError) as e:
-        schema.validate(11)
+
+def test_all_of_mismatch_second() -> None:
+    # given
+    document = {'allOf': [
+        {'properties': {'bar': {'type': 'integer'}}, 'required': ['bar']},
+        {'properties': {'foo': {'type': 'string'}}, 'required': ['foo']}
+    ]}
+    data = {'foo': 'baz'}
+    schema = JsonSchema(document, vocabulary=DRAFT_2020_12_VOCABULARY)
 
     # then
-    assert e.value.path == ""
-
+    assert not schema.validate(data)

@@ -1,8 +1,9 @@
 import pytest
 
 from jsoned import JsonSchema
-from jsoned.errors import SchemaParseError, MaximumValidationError
+from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import ExclusiveMaximumKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -35,8 +36,8 @@ def test_can_pass_validation() -> None:
     schema = JsonSchema(document, [keyword])
 
     # when
-    schema.validate(1)
-    schema.validate(9)
+    assert schema.validate(1)
+    assert schema.validate(9)
 
 
 def test_can_fail_validation() -> None:
@@ -47,10 +48,11 @@ def test_can_fail_validation() -> None:
 
     keyword = ExclusiveMaximumKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(MaximumValidationError) as e:
-        schema.validate(10)
+    assert not schema.validate(10, context)
 
     # then
-    assert e.value.expected_maximum == 10
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.NUMBER_EXCLUSIVE_MAXIMUM_ERROR

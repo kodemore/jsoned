@@ -1,32 +1,30 @@
 from decimal import Decimal
 
-import pytest
+from pytest import mark
 
-from jsoned.errors import MultipleOfValidationError
-from jsoned.validators.number_validators import NumberMultipleOfValidator
-
-
-def test_can_instantiate() -> None:
-    # given
-    instance = NumberMultipleOfValidator(Decimal("10"))
-
-    # then
-    assert isinstance(instance, NumberMultipleOfValidator)
+from jsoned.validators import Context, validate_number
 
 
-def test_pass_validation() -> None:
-    # given
-    instance = NumberMultipleOfValidator(Decimal("10"))
+@mark.parametrize("value,multiple_of", [
+    [10, Decimal("10")],
+    [10.1, Decimal("0.1")],
+    [2.4, Decimal("1.2")],
+    [4, Decimal("1")],
+    [0, Decimal("1")],
+])
+def test_pass_validation(value, multiple_of: Decimal) -> None:
+    context = Context()
+    assert validate_number(value, context, multiple_of=multiple_of)
+    assert not context.errors
 
-    # then
-    instance(10)
-    instance(20)
 
-
-def test_fail_validation() -> None:
-    # given
-    instance = NumberMultipleOfValidator(Decimal("10"))
-
-    # then
-    with pytest.raises(MultipleOfValidationError):
-        instance("11")
+@mark.parametrize("value,multiple_of", [
+    [9, Decimal("10")],
+    [10.1, Decimal("10.2")],
+    [1.2, Decimal("1.1")],
+    [0.35, Decimal("0.1")],
+])
+def test_fail_validation(value, multiple_of: Decimal) -> None:
+    context = Context()
+    assert not validate_number(value, context, multiple_of=multiple_of)
+    assert context.errors

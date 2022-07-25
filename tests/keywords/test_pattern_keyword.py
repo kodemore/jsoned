@@ -2,8 +2,9 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError
-from jsoned.errors.string_validation_errors import FormatValidationError
+from jsoned.errors import ValidationError
 from jsoned.keywords import PatternKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -37,9 +38,9 @@ def test_can_pass_validation() -> None:
     keyword = PatternKeyword()
     schema = JsonSchema(document, [keyword])
 
-    # when
-    schema.validate("555-1212")
-    schema.validate("(888)555-1212")
+    # then
+    assert schema.validate("555-1212")
+    assert schema.validate("(888)555-1212")
 
 
 def test_can_fail_validation() -> None:
@@ -51,14 +52,19 @@ def test_can_fail_validation() -> None:
 
     keyword = PatternKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(FormatValidationError) as e:
-        schema.validate("(888)555-1212 ext. 532")
+    assert not schema.validate("(888)555-1212 ext. 532", context)
 
     # then
-    assert e.value.expected_format == document["pattern"]
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.STRING_PATTERN_ERROR
 
     # when
-    with pytest.raises(FormatValidationError):
-        schema.validate("(800)FLOWERS")
+    context = Context()
+    assert not schema.validate("(800)FLOWERS", context)
+
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.STRING_PATTERN_ERROR

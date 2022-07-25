@@ -42,6 +42,8 @@ class JsonNumber(JsonType):
             return self._value == other._value
         elif isinstance(other, float):
             return self._value == Decimal(f"{other}")
+        elif type(other) == bool:
+            raise TypeError(f"Expected numerical type or JsonNumber, got `{type(other)}` instead.")
         elif isinstance(other, (Decimal, int)):
             return self._value == other
 

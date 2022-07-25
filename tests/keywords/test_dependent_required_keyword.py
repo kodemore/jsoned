@@ -1,8 +1,9 @@
 import pytest
 
 from jsoned import JsonSchema
-from jsoned.errors import SchemaParseError, DependentValidationError
+from jsoned.errors import SchemaParseError, ValidationError
 from jsoned.keywords import DependentRequiredKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -36,8 +37,8 @@ def test_can_pass_validate() -> None:
     schema = JsonSchema(document, [DependentRequiredKeyword()])
 
     # when
-    schema.validate({"a": 1})
-    schema.validate({"credit_card": "number", "billing_address": "address"})
+    assert schema.validate({"a": 1})
+    assert schema.validate({"credit_card": "number", "billing_address": "address"})
 
 
 def test_can_fail_validation() -> None:
@@ -49,7 +50,11 @@ def test_can_fail_validation() -> None:
     }
 
     schema = JsonSchema(document, [DependentRequiredKeyword()])
+    context = Context()
 
     # when
-    with pytest.raises(DependentValidationError):
-        schema.validate({"credit_card": "number"})
+    assert not schema.validate({"credit_card": "number"}, context)
+
+    # then
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.PROPERTY_MISSING_ERROR

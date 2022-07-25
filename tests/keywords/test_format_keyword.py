@@ -2,8 +2,9 @@ import pytest
 
 from jsoned import JsonSchema
 from jsoned.errors import SchemaParseError
-from jsoned.errors.string_validation_errors import FormatValidationError
+from jsoned.errors import ValidationError
 from jsoned.keywords import FormatKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -36,7 +37,7 @@ def test_can_pass_validate() -> None:
     schema = JsonSchema(document, [keyword])
 
     # when
-    schema.validate("2020-10-10T11:14:12")
+    assert schema.validate("2020-10-10T11:14:12")
 
 
 def test_can_fail_validation() -> None:
@@ -47,11 +48,13 @@ def test_can_fail_validation() -> None:
 
     keyword = FormatKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(FormatValidationError) as e:
-        schema.validate("abcd")
+    assert not schema.validate("abcd", context)
 
     # then
-    assert e.value.expected_format == "date-time"
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.STRING_FORMAT_ERROR
+
 

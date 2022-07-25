@@ -1,8 +1,9 @@
 import pytest
 
 from jsoned import JsonSchema
-from jsoned.errors import MinimumValidationError, SchemaParseError
+from jsoned.errors import ValidationError, SchemaParseError
 from jsoned.keywords import MinimumKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -34,10 +35,10 @@ def test_can_pass_validation() -> None:
     keyword = MinimumKeyword()
     schema = JsonSchema(document, [keyword])
 
-    # when
-    schema.validate(0)
-    schema.validate(1)
-    schema.validate(20)
+    # then
+    assert schema.validate(0)
+    assert schema.validate(1)
+    assert schema.validate(20)
 
 
 def test_can_fail_validation() -> None:
@@ -48,13 +49,14 @@ def test_can_fail_validation() -> None:
 
     keyword = MinimumKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(MinimumValidationError) as e:
-        schema.validate(-1)
+    assert not schema.validate(-1, context)
 
     # then
-    assert e.value.expected_minimum == 0
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.NUMBER_MINIMUM_ERROR
 
 
 def test_can_be_used_with_exclusive_minimum() -> None:
@@ -66,14 +68,14 @@ def test_can_be_used_with_exclusive_minimum() -> None:
 
     keyword = MinimumKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # then
-    schema.validate(1)
-    schema.validate(2)
+    assert schema.validate(1)
+    assert schema.validate(2)
 
     # when
-    with pytest.raises(MinimumValidationError) as e:
-        schema.validate(0)
+    assert not schema.validate(0, context)
 
     # then
-    assert e.value.expected_minimum == 0
+    assert len(context.errors) == 1

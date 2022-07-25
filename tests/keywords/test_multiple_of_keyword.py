@@ -1,8 +1,9 @@
 import pytest
 
 from jsoned import JsonSchema
-from jsoned.errors import MultipleOfValidationError, SchemaParseError
+from jsoned.errors import ValidationError, SchemaParseError
 from jsoned.keywords import MultipleOfKeyword
+from jsoned.validators import Context
 
 
 def test_can_instantiate() -> None:
@@ -35,9 +36,9 @@ def test_can_pass_validation() -> None:
     schema = JsonSchema(document, [keyword])
 
     # when
-    schema.validate(0)
-    schema.validate(10)
-    schema.validate(20)
+    assert schema.validate(0)
+    assert schema.validate(10)
+    assert schema.validate(20)
 
 
 def test_can_fail_validation() -> None:
@@ -48,10 +49,11 @@ def test_can_fail_validation() -> None:
 
     keyword = MultipleOfKeyword()
     schema = JsonSchema(document, [keyword])
+    context = Context()
 
     # when
-    with pytest.raises(MultipleOfValidationError) as e:
-        schema.validate(23)
+    assert not schema.validate(23, context)
 
     # then
-    assert e.value.multiple_of == 10
+    assert len(context.errors) == 1
+    assert context.errors[0].code == ValidationError.ErrorCodes.NUMBER_MULTIPLE_OF_ERROR
